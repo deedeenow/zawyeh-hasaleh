@@ -22,8 +22,19 @@ Run this **outside** this folder — the Studio is its own project, and later it
 be folded into the larger Zawyeh site instead:
 
 ```bash
-npm create sanity@latest -- --project-plan free --create-project "Zawyeh" --dataset production
+npm create sanity@latest
 ```
+
+Answer the prompts:
+
+| Prompt | Answer |
+| --- | --- |
+| Login | opens a browser |
+| Project | Create new → `Zawyeh` |
+| Default dataset configuration | **Yes** — `production`, public |
+| Output path | `zawyeh-studio` |
+| Template | Clean project with no predefined schemas |
+| TypeScript | Yes |
 
 Keep the **dataset public**. This app reads without a token, which only works on a
 public dataset — and the ledger is public information by design. A private dataset
@@ -32,17 +43,16 @@ would mean shipping a read token to the server for no benefit.
 ### 2. Add the ledger schema to the Studio
 
 Copy [sanity/schemaTypes/ledgerEntry.ts](sanity/schemaTypes/ledgerEntry.ts) into
-your Studio's schema folder and register it:
+the Studio's `schemaTypes/` folder, then register it in `schemaTypes/index.ts`:
 
 ```ts
-// sanity.config.ts in the Studio project
-import { ledgerEntry } from './schemaTypes/ledgerEntry';
+import { ledgerEntry } from './ledgerEntry';
 
-export default defineConfig({
-  // ...
-  schema: { types: [ledgerEntry] },
-});
+export const schemaTypes = [ledgerEntry];
 ```
+
+Check it locally with `npx sanity dev` — "Ledger entry" should appear in the
+Studio's content list.
 
 That file is deliberately not part of this app's build (`sanity` is excluded in
 `tsconfig.json`) — it belongs to whichever project runs the Studio.
