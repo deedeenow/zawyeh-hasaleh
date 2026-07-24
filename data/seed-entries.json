@@ -1,0 +1,57 @@
+{
+  "currency": "$",
+  "entries": [
+    {
+      "id": "sample-01",
+      "date": "2026-03-02T10:00:00.000Z",
+      "kind": "in",
+      "amountCents": 480000,
+      "label": "Opening contribution",
+      "note": "Pooled from the founding members"
+    },
+    {
+      "id": "sample-02",
+      "date": "2026-03-19T14:30:00.000Z",
+      "kind": "out",
+      "amountCents": 126500,
+      "label": "Radio room soundproofing"
+    },
+    {
+      "id": "sample-03",
+      "date": "2026-04-11T09:15:00.000Z",
+      "kind": "in",
+      "amountCents": 92000,
+      "label": "Cafe takings, opening week"
+    },
+    {
+      "id": "sample-04",
+      "date": "2026-05-06T16:45:00.000Z",
+      "kind": "out",
+      "amountCents": 34000,
+      "label": "Chairs for the reading corner",
+      "note": "Six, secondhand"
+    },
+    {
+      "id": "sample-05",
+      "date": "2026-06-01T11:00:00.000Z",
+      "kind": "out",
+      "amountCents": 210000,
+      "label": "Three months of rent"
+    },
+    {
+      "id": "sample-06",
+      "date": "2026-06-27T18:20:00.000Z",
+      "kind": "in",
+      "amountCents": 65000,
+      "label": "Print sale at the summer show"
+    },
+    {
+      "id": "sample-07",
+      "date": "2026-07-18T13:05:00.000Z",
+      "kind": "out",
+      "amountCents": 48750,
+      "label": "Mixer repair",
+      "note": "Channel four had stopped working"
+    }
+  ]
+}

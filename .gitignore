@@ -1,0 +1,20 @@
+node_modules/
+.next/
+out/
+build/
+
+.env
+.env.local
+.env*.local
+
+next-env.d.ts
+*.tsbuildinfo
+
+.DS_Store
+npm-debug.log*
+yarn-error.log*
+
+# Generated from the scan by `npm run model`. Committed on purpose so a deploy
+# does not need the 22 MB source OBJ — delete this line if you would rather
+# build it in CI.
+# public/hasaleh.mesh

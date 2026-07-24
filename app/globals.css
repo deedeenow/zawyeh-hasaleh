@@ -1,0 +1,500 @@
+/* ==========================================================================
+   حصالة / HASALEH — 1-bit design tokens
+   Two values, no accent. Every apparent grey on this page is a real 3px
+   checkerboard on the same grid as the WebGL dither, so the whole document
+   reads as one raster. Nothing here is allowed to be anti-aliased grey.
+   ========================================================================== */
+
+:root {
+  --ink: #000000;
+  --paper: #ffffff;
+
+  /* One number governs the raster. Change it and the 3D dither follows
+     (see DITHER_PIXEL in app/components/MoneyBox.tsx). */
+  --px: 3px;
+  --tile: 6px;
+
+  /* 50% — checkerboard. 25% / 75% — single quadrant, on or off. */
+  --d50: conic-gradient(var(--paper) 0 25%, transparent 0 50%, var(--paper) 0 75%, transparent 0);
+  --d25: conic-gradient(var(--paper) 0 25%, transparent 0);
+  --d75: conic-gradient(transparent 0 25%, var(--paper) 0);
+
+  /* Dithered hairlines. A 1-bit rule cannot be dimmed, only broken up. */
+  --rule-h: repeating-linear-gradient(90deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
+  --rule-v: repeating-linear-gradient(180deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
+
+  --display: Copperplate, "Copperplate Gothic Light", "Engravers MT", "Bodoni 72 Smallcaps", serif;
+  --mono: Menlo, Monaco, "SF Mono", "DejaVu Sans Mono", monospace;
+
+  --gutter: clamp(1.125rem, 3.2vw, 2.5rem);
+  --rail: clamp(19rem, 30vw, 25rem);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+/* The layout is grid-and-gap throughout; inherited UA margins on these would
+   silently overflow the stage. */
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--mono);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--paper);
+  outline-offset: 2px;
+}
+
+/* --- shared atoms -------------------------------------------------------- */
+
+.eyebrow {
+  font-family: var(--display);
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.figure {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+.arabic {
+  font-family: "Geeza Pro", "SF Arabic", "Noto Naskh Arabic", serif;
+  font-size: 1.0625rem;
+  letter-spacing: 0;
+  /* Holds the Arabic at the same optical weight as the tracked Copperplate
+     beside it, which otherwise dwarfs it. */
+  line-height: 1;
+}
+
+/* --- shell --------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+  height: 100dvh;
+}
+
+.masthead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem var(--gutter);
+  position: relative;
+}
+
+.masthead::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background-image: var(--rule-h);
+}
+
+.masthead-mark {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.masthead-meta {
+  font-size: 0.625rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 1;
+}
+
+.masthead-link {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.masthead-link:hover {
+  border-bottom-color: var(--paper);
+}
+
+.body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--rail);
+  min-height: 0;
+}
+
+/* --- stage: the bank ----------------------------------------------------- */
+
+.stage {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  padding: 0 var(--gutter) var(--gutter);
+}
+
+.canvas-wrap {
+  position: relative;
+  min-height: 0;
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Shown only when WebGL will not start. */
+.canvas-fallback {
+  position: absolute;
+  inset: 12%;
+  border: 1px solid var(--paper);
+  background-image: var(--d25);
+  background-size: var(--tile) var(--tile);
+  display: grid;
+  place-content: center;
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.canvas-fallback p {
+  margin: 0;
+  background: var(--ink);
+  padding: 0.5rem 0.75rem;
+  max-width: 22ch;
+}
+
+.readout {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.readout-label {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+}
+
+.balance {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(3rem, 9.5vw, 8.25rem);
+  line-height: 0.86;
+  letter-spacing: -0.045em;
+  font-weight: 400;
+}
+
+.balance-currency {
+  font-size: 0.24em;
+  letter-spacing: 0.1em;
+  align-self: flex-start;
+  padding-top: 0.35em;
+}
+
+.readout-last {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+}
+
+.readout-last-tag {
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.15rem 0.4rem;
+  font-family: var(--display);
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.totals {
+  display: flex;
+  gap: 1.5rem;
+  margin-top: 0.35rem;
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* --- rail: the T-account ------------------------------------------------- */
+
+.rail {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+}
+
+.rail::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 1px;
+  background-image: var(--rule-v);
+  z-index: 2;
+}
+
+.rail-head {
+  padding: 0.85rem var(--gutter) 0.6rem;
+  position: relative;
+}
+
+.rail-head::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--paper);
+}
+
+.rail-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.7rem;
+}
+
+.rail-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.rail-columns span:last-child {
+  text-align: right;
+}
+
+.rail-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--paper) var(--ink);
+}
+
+.rail-scroll::-webkit-scrollbar {
+  width: var(--tile);
+}
+
+.rail-scroll::-webkit-scrollbar-track {
+  background: var(--ink);
+}
+
+.rail-scroll::-webkit-scrollbar-thumb {
+  background-color: var(--paper);
+  background-image: var(--d75);
+  background-size: var(--tile) var(--tile);
+}
+
+/* The spine. Money in hangs left of it, money out hangs right — a real
+   T-account, so the split carries the direction of every transaction. */
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  background-image: var(--rule-v);
+  background-repeat: repeat-y;
+  background-position: calc(50% - 0.5px) 0;
+  background-size: 1px 100%;
+}
+
+.entry {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  position: relative;
+}
+
+.entry::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background-image: var(--rule-h);
+  opacity: 0.65;
+}
+
+.entry-cell {
+  padding: 0.7rem calc(var(--gutter) * 0.6);
+  min-width: 0;
+}
+
+.entry-in .entry-cell {
+  grid-column: 1;
+  padding-left: var(--gutter);
+}
+
+.entry-out .entry-cell {
+  grid-column: 2;
+  padding-right: var(--gutter);
+  text-align: right;
+}
+
+.entry-date {
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.entry-amount {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.0625rem;
+  line-height: 1.1;
+  display: block;
+  letter-spacing: -0.02em;
+}
+
+.entry-label {
+  display: block;
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+}
+
+.entry-note {
+  display: block;
+  margin-top: 0.35rem;
+  padding-top: 0.35rem;
+  font-size: 0.6875rem;
+  background-image: var(--rule-h);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 1px;
+  overflow-wrap: anywhere;
+}
+
+/* Inside the inverted latest row the rule has to flip to ink. */
+.entry-latest .entry-note {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--ink) 0 var(--px),
+    transparent var(--px) var(--tile)
+  );
+}
+
+/* The newest entry is the only inverted thing in the ledger — it is the one
+   the bank just reacted to. */
+.entry-latest .entry-cell {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.entries-empty {
+  padding: 2rem var(--gutter);
+  /* box-sizing is border-box, so the gutters have to be added back or the
+     measure collapses to about a third of the intended line length. */
+  max-width: calc(26ch + 2 * var(--gutter));
+}
+
+.entries-empty p {
+  margin: 0 0 0.6rem;
+}
+
+.muted {
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- narrow screens ------------------------------------------------------ */
+
+@media (max-width: 52rem) {
+  body {
+    overflow: auto;
+  }
+
+  .shell {
+    height: auto;
+    min-height: 100dvh;
+  }
+
+  .body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stage {
+    grid-template-rows: 52vh auto;
+  }
+
+  .rail::before {
+    inset-block: auto;
+    inset-inline: 0;
+    top: 0;
+    width: auto;
+    height: 1px;
+    background-image: var(--rule-h);
+  }
+
+  .rail {
+    grid-template-rows: auto auto;
+  }
+
+  .rail-scroll {
+    overflow: visible;
+  }
+
+
+
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
