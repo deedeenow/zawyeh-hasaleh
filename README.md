@@ -103,16 +103,24 @@ Use **Vercel** — this is a Next 15 App Router app and Vercel is the reference
 platform for it. Netlify works but runs Next through an adapter that trails on new
 App Router behaviour.
 
-1. Push to GitHub.
-2. Vercel → Add New → Project → import the repo.
-3. **Set Root Directory** to this folder. The repo root is `Zawyeh/`, so it will
-   not be found automatically.
-4. Add environment variables (all Production/Preview/Development):
+This folder is its own git repository, so Vercel needs no Root Directory setting.
+
+1. Create an empty repo on GitHub, then push:
+   `git remote add origin <url> && git push -u origin main`
+2. Vercel → Add New → Project → import it. Framework detection picks up Next.js
+   on its own; leave every build setting alone.
+3. Add environment variables (tick Production, Preview and Development):
    `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`,
    `NEXT_PUBLIC_SANITY_API_VERSION`, `NEXT_PUBLIC_CURRENCY`, and optionally
    `NEXT_PUBLIC_STUDIO_URL`. Do **not** add `SANITY_WRITE_TOKEN` — the site never
    writes.
-5. Deploy.
+4. Deploy.
+
+Because `NEXT_PUBLIC_*` variables are inlined at build time, changing one needs a
+redeploy to take effect — not just a save.
+
+When this later becomes part of the larger Zawyeh site, move the folder into that
+repo and set Vercel's Root Directory then.
 
 No Sanity CORS configuration is needed. Reads happen server-side, and the browser
 only ever talks to this app's own `/api/ledger`.
