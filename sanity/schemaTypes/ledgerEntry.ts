@@ -5,8 +5,20 @@ import { defineField, defineType } from 'sanity';
  * people recording entries at the same time can never overwrite each other, and
  * every figure carries its own revision history.
  *
- * This file belongs to the Studio, not to the Next app. Copy it into your Studio
- * project's schema folder (see the README) — the Next app only ever reads.
+ * ⚠ THIS FILE IS A MIRROR, NOT THE SOURCE OF TRUTH.
+ *
+ * The live schema on project 3a03n44v is MCP-managed: it was deployed through the
+ * Sanity connector, not from a local Studio. Editing this file changes nothing on
+ * its own. It exists so the shape lives in version control and so the type can be
+ * adopted later.
+ *
+ * The deployed version is also slightly reduced, because the MCP schema format
+ * accepts declarative values only: the `preview.prepare` below and the `date`
+ * field's `initialValue` are not deployed. The `amount` validator is.
+ *
+ * When the larger Zawyeh site gains a real Studio, move this type into it and
+ * deploy with `npx sanity@latest schema deploy` from then on — that becomes the
+ * source of truth, and the connector should not be used to deploy schema again.
  */
 export const ledgerEntry = defineType({
   name: 'ledgerEntry',

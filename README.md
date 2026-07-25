@@ -8,98 +8,64 @@ Entries live in **Sanity**. This app only ever reads them, which is what lets it
 run on serverless hosting and what will let the larger Zawyeh site read the same
 data later.
 
-## Setting up
+## What is already wired
 
-Needs Node 18.18+ (built and verified on 24.18).
+The Sanity side is live. Nothing below needs doing again — it is recorded here so
+you know how it is put together.
+
+| | |
+| --- | --- |
+| Project | `Zawyeh` — `3a03n44v` (org `oLuoFh4dA`) |
+| Dataset | `production`, **public** ACL |
+| Schema | `ledgerEntry`, MCP-managed on workspace `default` |
+| Studio | https://zawyeh-hasaleh.sanity.studio/ |
+| Sample entries | created, then **unpublished** — they sit as drafts |
+
+The dataset is public on purpose: the site reads with no token, which only works on
+a public dataset, and the ledger is public information anyway.
+
+To run it locally:
 
 ```bash
 npm install
 ```
 
-### 1. Create the Sanity project and Studio
-
-Run this **outside** this folder — the Studio is its own project, and later it can
-be folded into the larger Zawyeh site instead:
-
-```bash
-npm create sanity@latest
-```
-
-Answer the prompts:
-
-| Prompt | Answer |
-| --- | --- |
-| Login | opens a browser |
-| Project | Create new → `Zawyeh` |
-| Default dataset configuration | **Yes** — `production`, public |
-| Output path | `zawyeh-studio` |
-| Template | Clean project with no predefined schemas |
-| TypeScript | Yes |
-
-Keep the **dataset public**. This app reads without a token, which only works on a
-public dataset — and the ledger is public information by design. A private dataset
-would mean shipping a read token to the server for no benefit.
-
-### 2. Add the ledger schema to the Studio
-
-Copy [sanity/schemaTypes/ledgerEntry.ts](sanity/schemaTypes/ledgerEntry.ts) into
-the Studio's `schemaTypes/` folder, then register it in `schemaTypes/index.ts`:
-
-```ts
-import { ledgerEntry } from './ledgerEntry';
-
-export const schemaTypes = [ledgerEntry];
-```
-
-Check it locally with `npx sanity dev` — "Ledger entry" should appear in the
-Studio's content list.
-
-That file is deliberately not part of this app's build (`sanity` is excluded in
-`tsconfig.json`) — it belongs to whichever project runs the Studio.
-
-Then publish the Studio:
-
-```bash
-npx sanity deploy
-```
-
-### 3. Point this app at the project
-
-Already done — `.env` is committed with the live values:
-
-| | |
-| --- | --- |
-| Project | `Zawyeh` — `3a03n44v` |
-| Dataset | `production` (public) |
-| Studio | https://zawyeh-hasaleh.sanity.studio/ |
-
-`.env` is tracked on purpose: every `NEXT_PUBLIC_*` value is already visible in
-the client bundle, so none of it is secret, and committing it means a deploy needs
-no dashboard configuration. Override anything locally with `.env.local`, which
-stays git-ignored.
-
 ```bash
 npm run dev
 ```
 
-If the project id is ever missing the site renders a clean empty state and
-`/api/ledger` returns a 503 saying so — it does not crash.
+`.env` is committed with the project id, dataset, API version, currency and Studio
+URL. Every one of those is a `NEXT_PUBLIC_*` value that already ships inside the
+client bundle, so none of it is secret — and committing it means a deploy needs no
+dashboard configuration. Override anything locally with `.env.local`, which stays
+git-ignored. If the project id is ever missing, the site renders a clean empty
+state and `/api/ledger` returns a 503 saying so, rather than crashing.
 
-### 4. Import the sample entries (optional)
+### The schema is MCP-managed — mind the divergence
 
-`data/seed-entries.json` holds seven sample entries. To push them into Sanity:
+The deployed schema was created through the Sanity connector, not from a local
+Studio project. [sanity/schemaTypes/ledgerEntry.ts](sanity/schemaTypes/ledgerEntry.ts)
+is a **mirror** of it for reference and version history, not the source of truth.
+Editing that file changes nothing on its own.
 
-```bash
-npm run seed -- --dry-run
-```
+Two consequences:
 
-```bash
-SANITY_WRITE_TOKEN=your-editor-token npm run seed
-```
+- The MCP schema format takes declarative values only, so the deployed version
+  drops the custom `preview.prepare` (entries list as label + ISO date rather than
+  label + signed amount) and the `initialValue` date default. The two-decimal
+  validator did survive.
+- When the larger Zawyeh site gets a proper Studio in its own repo, adopt this type
+  into it and deploy with `npx sanity@latest schema deploy` from then on. Mixing
+  the two is what makes deployed and source schemas drift apart.
 
-The write token is needed **only** here — create one at `sanity.io/manage` → API →
-Tokens with Editor access. Pass `--replace` to clear existing entries first. Then
-delete `data/seed-entries.json`; nothing reads it at runtime.
+### Sample entries
+
+Seven samples were used to verify the whole chain, then unpublished so no invented
+figures sit on a public ledger. They are drafts in the Studio — publish any of them
+to bring them back, or delete them and start recording real ones.
+
+`data/seed-entries.json` plus `npm run seed` (needs `SANITY_WRITE_TOKEN`) remains
+available if you ever want to bulk-import from a file again.
 
 ## Recording money
 
@@ -118,21 +84,29 @@ Use **Vercel** — this is a Next 15 App Router app and Vercel is the reference
 platform for it. Netlify works but runs Next through an adapter that trails on new
 App Router behaviour.
 
-This folder is its own git repository, so Vercel needs no Root Directory setting.
+This folder is its own git repository, ready to push.
 
-1. Create an empty repo on GitHub, then push:
-   `git remote add origin <url> && git push -u origin main`
-2. Vercel → Add New → Project → import it. Framework detection picks up Next.js
-   on its own; leave every build setting alone.
-3. Add environment variables (tick Production, Preview and Development):
-   `NEXT_PUBLIC_SANITY_PROJECT_ID`, `NEXT_PUBLIC_SANITY_DATASET`,
-   `NEXT_PUBLIC_SANITY_API_VERSION`, `NEXT_PUBLIC_CURRENCY`, and optionally
-   `NEXT_PUBLIC_STUDIO_URL`. Do **not** add `SANITY_WRITE_TOKEN` — the site never
-   writes.
-4. Deploy.
+The quickest route, no GitHub needed:
 
-Because `NEXT_PUBLIC_*` variables are inlined at build time, changing one needs a
-redeploy to take effect — not just a save.
+```bash
+npx vercel --prod
+```
+
+It logs you in once in the browser, then asks which scope — pick the **Zawyeh**
+team. Because `.env` is committed, **no environment variables need setting in the
+dashboard**; the build reads them from the file.
+
+If you would rather deploy from git, create an empty GitHub repo, then:
+
+```bash
+git remote add origin <url> && git push -u origin main
+```
+
+and import it in Vercel. Framework detection handles the rest — leave every build
+setting alone, and no Root Directory is needed since this folder is the repo root.
+
+Note that any `NEXT_PUBLIC_*` value you later override in the Vercel dashboard is
+inlined at build time, so changing one needs a redeploy, not just a save.
 
 When this later becomes part of the larger Zawyeh site, move the folder into that
 repo and set Vercel's Root Directory then.
@@ -156,7 +130,8 @@ npm run model
 That reads the OBJ, welds it down to ~33k triangles by vertex clustering,
 straightens the 2.31° lean in the scan's axis of revolution, centres it, scales it
 to 2.1 units tall, recomputes smooth normals, and writes `public/hasaleh.mesh` —
-781 KB, about 516 KB gzipped, 3.6% of the source.
+585 KB, about 500 KB gzipped, 2.7% of the source. Indices are 16-bit whenever the
+vertex count fits in 65535, which it does here; that is exactly lossless.
 
 Re-run it after a rescan. The OBJ stays the source of truth. To trade file size
 against detail, change `CLUSTER_RESOLUTION` in `scripts/prepare-model.mjs` —
