@@ -210,9 +210,11 @@ public/
 - **Money is integer minor units** (`amountCents`) everywhere inside the app. The
   Studio field is major units for the editor's sake and is converted once, at the
   boundary in `coerceEntry`. Keep that split.
-- **Two ancestor folders still contain spaces**, so the full path is
-  `zawyeh space/main website/hasaleh-website`. That is what goes in Vercel's Root
-  Directory field. It works, but every shell command against it needs quoting.
-  Renaming those two as well would remove the last of it.
+- **Naming is consistent across the three places it appears**: the folder, the
+  GitHub repo, and the Studio host are all `zawyeh-hasaleh`. Keep them in step.
+- **Two ancestor folders still contain spaces**, so the full local path is
+  `zawyeh space/main website/zawyeh-hasaleh`. Irrelevant to deployment now that the
+  repo root is this folder, but shell commands against the path still need quoting.
+  Renaming those two would remove the last of it.
 - The whole page is `.shell` inside `app/page.tsx`, so it lifts into a route of the
   bigger app as-is; the only global CSS is on `:root` and `body`.
