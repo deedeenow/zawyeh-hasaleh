@@ -19,7 +19,9 @@ const ENTRIES_QUERY = /* groq */ `
     kind,
     amount,
     label,
-    note
+    labelAr,
+    note,
+    noteAr
   }
 `;
 
@@ -30,11 +32,20 @@ interface RawEntry {
   kind?: string;
   amount?: number;
   label?: string;
+  labelAr?: string;
   note?: string;
+  noteAr?: string;
 }
 
 function isKind(value: unknown): value is EntryKind {
   return value === 'in' || value === 'out';
+}
+
+/** Trims and caps a piece of optional entry text, or drops it. */
+function text(value: unknown, max: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed === '' ? undefined : trimmed.slice(0, max);
 }
 
 /**
@@ -43,7 +54,10 @@ function isKind(value: unknown): value is EntryKind {
  */
 function coerceEntry(raw: RawEntry): Entry | null {
   if (!raw.id || !isKind(raw.kind)) return null;
-  if (typeof raw.label !== 'string' || raw.label.trim() === '') return null;
+  // At least one language must have a label, or there is nothing to show.
+  const label = text(raw.label, MAX_LABEL_LENGTH);
+  const labelAr = text(raw.labelAr, MAX_LABEL_LENGTH);
+  if (!label && !labelAr) return null;
 
   const amount = Number(raw.amount);
   if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -61,11 +75,10 @@ function coerceEntry(raw: RawEntry): Entry | null {
     date: parsed.toISOString(),
     kind: raw.kind,
     amountMinor,
-    label: raw.label.trim().slice(0, MAX_LABEL_LENGTH),
-    note:
-      typeof raw.note === 'string' && raw.note.trim() !== ''
-        ? raw.note.trim().slice(0, MAX_NOTE_LENGTH)
-        : undefined,
+    label: label ?? labelAr ?? '',
+    labelAr,
+    note: text(raw.note, MAX_NOTE_LENGTH),
+    noteAr: text(raw.noteAr, MAX_NOTE_LENGTH),
   };
 }
 

@@ -10,6 +10,25 @@
 
 export type Locale = 'ar' | 'en';
 
+/**
+ * Picks the text for a locale, falling back to the other language rather than
+ * rendering nothing. A half-translated entry is still worth showing — and the
+ * Studio only warns about a missing Arabic label, it does not block publishing.
+ */
+export function pickText(
+  entry: { label: string; labelAr?: string },
+  locale: Locale,
+): string {
+  return locale === 'ar' ? (entry.labelAr ?? entry.label) : (entry.label ?? entry.labelAr ?? '');
+}
+
+export function pickNote(
+  entry: { note?: string; noteAr?: string },
+  locale: Locale,
+): string | undefined {
+  return locale === 'ar' ? (entry.noteAr ?? entry.note) : (entry.note ?? entry.noteAr);
+}
+
 export const DEFAULT_LOCALE: Locale = 'ar';
 
 export const DIRECTION: Record<Locale, 'rtl' | 'ltr'> = {

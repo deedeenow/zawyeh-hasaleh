@@ -180,8 +180,13 @@ structural rather than cosmetic:
 - **Latin figures stay Menlo**, wrapped in `.num`
   (`direction: ltr; unicode-bidi: isolate`). Without the isolate, RTL's bidi
   reordering moves a leading minus to the far side and `−515` renders as `515−`.
-- Entry text is shown exactly as typed in the Studio — it is not translated.
-  Bilingual entries would need `label_ar` / `label_en` on the schema.
+- **Entry text is authored in both languages.** The Studio has Arabic and English
+  fields for both "what for" and the note, ordered Arabic-first. `label` holds the
+  English and `labelAr` the Arabic — asymmetric internally, but the Studio titles
+  make it obvious and it avoided migrating live documents.
+  A missing Arabic label is a **warning, not an error**, so it never blocks
+  publishing, and `pickText` falls back to the other language rather than rendering
+  a blank row. A half-translated entry still shows.
 
 ### Swapping the Arabic font
 
@@ -230,7 +235,8 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
   `app/components/MoneyBox.tsx` matches it, so the WebGL dither and the CSS
   patterns land on the same grid. Change both together or neither.
 - **Type.** Copperplate for display and labels, Menlo for everything else and all
-  figures. Both ship with macOS, so there are no font downloads; on Windows and
+  Latin figures. The scale was raised roughly 15–20% across the board; `--rail`
+  widened with it, or every label in the ledger wrapped. Both ship with macOS, so there are no font downloads; on Windows and
   Linux the stacks in `--display` / `--mono` fall back. Swap in a self-hosted face
   via `next/font/local` when you want it identical everywhere.
 - **The ledger is a T-account.** Money in hangs left of the dithered spine, money
@@ -238,6 +244,20 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
 - **Size.** The box scales `0.92`–`1.08` from balance against its all-time peak —
   deliberately subtle — plus a damped ±`0.10` spring pulse when a new transaction
   lands. Constants are at the top of `MoneyBox.tsx`.
+- **Coins.** A coin drops through the slot at random intervals (3.5–9s), each one
+  entering from a different offset, tumbling at its own rate, and turning from
+  face-on to edge-on as it arrives — which is the only way a coin gets into a slot.
+  It is not faded or shrunk away: it sinks inside the closed shell and the depth
+  buffer occludes it, which is both the simplest way to hide something in a 1-bit
+  render and what actually happens.
+  A real **money-in** entry drops one too, and **only that coin makes the box
+  flinch** when it lands. Ambient coins deliberately do not — if the box twitched at
+  random, the pulse would stop meaning "something happened". Nothing drops on money
+  out: a hasaleh only takes coins through the slot.
+  The slot's height is **measured from the mesh** (`findSlotHeight`), not hardcoded —
+  it is the highest point still wide enough to be the sphere's shoulder, which on
+  this scan is y≈0.787, right where the profile narrows into the apex nub. A rescan
+  stays correct.
 - **Load.** The dither threshold ramps from 1, so the image develops in over
   ~1.15s. That is the only entrance animation; `prefers-reduced-motion` skips it
   along with the rotation and the bob.

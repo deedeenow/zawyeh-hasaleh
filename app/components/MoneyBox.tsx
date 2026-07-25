@@ -38,6 +38,51 @@ const FORWARD_TILT = 0.22;
 const SPIN_SPEED = 0.3;
 
 /**
+ * Coins drop on their own at random intervals, as ambient life, and each one
+ * enters differently so the loop never reads as a loop.
+ *
+ * A real money-in entry also drops one immediately — and only that coin makes the
+ * box flinch when it lands. Ambient coins deliberately do not: if the box twitched
+ * at random the pulse would stop meaning "something happened".
+ *
+ * Nothing drops on money out. A hasaleh only takes coins through the slot; getting
+ * money back out means opening the base.
+ *
+ * The radius is sized against the box rather than against realism: at 0.15 the coin
+ * came out about four raster blocks across and read as a speck. This is roughly 29%
+ * of the box's width, which is about right for a coin beside a money box anyway.
+ */
+const COIN_RADIUS = 0.22;
+const COIN_THICKNESS = 0.05;
+const COIN_FALL_SECONDS = 0.6;
+/** Above the visible frame, so the coin falls into view rather than appearing. */
+const COIN_START_HEIGHT = 1.9;
+/**
+ * How far below the slot the coin settles. It does not fade or shrink — it sinks
+ * inside the closed shell, and the depth buffer occludes it. That is both the
+ * simplest way to hide something in a 1-bit render and what actually happens.
+ */
+const COIN_SINK = 0.16;
+/** Gap between ambient drops, picked fresh each time within this range. */
+const COIN_AMBIENT_MIN_SECONDS = 3.5;
+const COIN_AMBIENT_MAX_SECONDS = 9;
+/**
+ * How far off the axis a coin may start. It converges on the slot as it falls, so
+ * each one arcs in from a slightly different place instead of dropping down a wire.
+ */
+const COIN_SPREAD_X = 0.45;
+const COIN_SPREAD_Z = 0.25;
+/** Range of tumble rates, in turns per second. */
+const COIN_TUMBLE_MIN = 0.35;
+const COIN_TUMBLE_MAX = 1.1;
+/**
+ * Fraction of the mesh's maximum radius that marks the sphere's shoulder. On this
+ * scan the radius falls from 46% to 21% across the last two bands as the apex nub
+ * begins, and the real coin slot sits on that shoulder.
+ */
+const SLOT_RADIUS_FRACTION = 0.3;
+
+/**
  * Initial velocity that makes an underdamped spring peak at exactly
  * PULSE_MAGNITUDE, solved rather than guessed so the constant above means what
  * it says. The fixed-step integrator in the loop lands ~13% under the
@@ -197,6 +242,30 @@ function readColor(token: string, fallback: string): THREE.Vector3 {
   );
 }
 
+/**
+ * Height of the coin slot, measured from the mesh rather than hardcoded, so a
+ * rescan stays correct. Returns the highest point still wide enough to be the
+ * sphere's shoulder — above that the profile narrows into the apex nub.
+ */
+function findSlotHeight(geometry: THREE.BufferGeometry): number {
+  const position = geometry.getAttribute('position');
+  let maxRadius = 0;
+  for (let i = 0; i < position.count; i++) {
+    const radius = Math.hypot(position.getX(i), position.getZ(i));
+    if (radius > maxRadius) maxRadius = radius;
+  }
+
+  const threshold = maxRadius * SLOT_RADIUS_FRACTION;
+  let slot = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    const y = position.getY(i);
+    if (y > slot && Math.hypot(position.getX(i), position.getZ(i)) >= threshold) {
+      slot = y;
+    }
+  }
+  return Number.isFinite(slot) ? slot : 0.8;
+}
+
 /** Reads the binary written by scripts/prepare-model.mjs. */
 function parseMesh(buffer: ArrayBuffer): THREE.BufferGeometry {
   const header = new DataView(buffer);
@@ -240,13 +309,18 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
   const fillRef = useRef(fill);
   const pulseRef = useRef({ offset: 0, velocity: 0 });
   const lastPulseKey = useRef<string | null>(null);
+  /**
+   * Set by the transaction effect, consumed by the render loop. The loop owns all
+   * the scene state, so this is the handoff between React and the animation.
+   */
+  const pendingRef = useRef<{ direction: number } | null>(null);
 
   useEffect(() => {
     fillRef.current = fill;
   }, [fill]);
 
   useEffect(() => {
-    // Skip the first run: the develop-in is the load moment, not a pulse.
+    // Skip the first run: the develop-in is the load moment, not a transaction.
     if (lastPulseKey.current === null) {
       lastPulseKey.current = pulseKey;
       return;
@@ -254,8 +328,7 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
     if (lastPulseKey.current === pulseKey) return;
     lastPulseKey.current = pulseKey;
 
-    const direction = pulseDirection >= 0 ? 1 : -1;
-    pulseRef.current.velocity += direction * PULSE_IMPULSE;
+    pendingRef.current = { direction: pulseDirection >= 0 ? 1 : -1 };
   }, [pulseKey, pulseDirection]);
 
   useEffect(() => {
@@ -306,6 +379,21 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       fragmentShader: SHELL_SHADER,
       side: THREE.DoubleSide,
     });
+
+    // The coin shares the shell's material and so the same dither, which keeps it
+    // in the page's one raster. It sits in tiltGroup rather than spinGroup: it
+    // falls along the box's own axis without orbiting with it.
+    const coinGeometry = new THREE.CylinderGeometry(
+      COIN_RADIUS,
+      COIN_RADIUS,
+      COIN_THICKNESS,
+      28,
+    );
+    const coin = new THREE.Mesh(coinGeometry, shell);
+    // Face-on to the camera at the start, so it is legible as a coin.
+    coin.rotation.x = Math.PI / 2;
+    coin.visible = false;
+    tiltGroup.add(coin);
 
     const renderTarget = new THREE.WebGLRenderTarget(2, 2, {
       minFilter: THREE.NearestFilter,
@@ -367,6 +455,36 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
     let running = true;
     let disposed = false;
     let geometry: THREE.BufferGeometry | null = null;
+    /** Measured from the mesh once it loads. */
+    let slotHeight = 0.8;
+    /**
+     * The coin currently in flight, or null. `marksTransaction` separates a coin
+     * that stands for a real entry — and so pulses the box on landing — from an
+     * ambient one, which does not.
+     */
+    let coin_: {
+      progress: number;
+      offsetX: number;
+      offsetZ: number;
+      tilt: number;
+      tumble: number;
+      marksTransaction: boolean;
+    } | null = null;
+    /** Elapsed time at which the next ambient coin is released. */
+    let nextAmbientAt = COIN_AMBIENT_MIN_SECONDS;
+
+    const between = (min: number, max: number) => min + Math.random() * (max - min);
+
+    const releaseCoin = (marksTransaction: boolean) => {
+      coin_ = {
+        progress: 0,
+        offsetX: between(-COIN_SPREAD_X, COIN_SPREAD_X),
+        offsetZ: between(-COIN_SPREAD_Z, COIN_SPREAD_Z),
+        tilt: between(-0.5, 0.5),
+        tumble: between(COIN_TUMBLE_MIN, COIN_TUMBLE_MAX) * Math.PI * 2,
+        marksTransaction,
+      };
+    };
 
     /**
      * One frame's worth of work, split out from the rAF callback so a fixed
@@ -384,6 +502,62 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       }
 
       const pulse = pulseRef.current;
+
+      /** Kicks the spring. Money in swells the box, money out deflates it. */
+      const applyPulse = (direction: number) => {
+        pulse.velocity += direction * PULSE_IMPULSE;
+      };
+
+      // A new transaction. Money in sends a coin down the slot and the pulse waits
+      // for it to land; money out, and reduced motion, pulse straight away.
+      const pending = pendingRef.current;
+      if (pending) {
+        pendingRef.current = null;
+        if (pending.direction > 0 && !reduceMotion && geometry) {
+          // Never strand a transaction coin's pulse if one is already falling.
+          if (coin_?.marksTransaction) applyPulse(1);
+          releaseCoin(true);
+        } else {
+          applyPulse(pending.direction);
+        }
+      }
+
+      // Ambient drops. Held back until the mesh is in and the image has developed,
+      // so the first thing anyone sees is the box, not a coin over an empty frame.
+      if (!reduceMotion && geometry && developed >= 1) {
+        if (coin_ === null && elapsed >= nextAmbientAt) {
+          releaseCoin(false);
+        }
+      }
+
+      if (coin_) {
+        coin_.progress = Math.min(1, coin_.progress + delta / COIN_FALL_SECONDS);
+        const { progress } = coin_;
+        // Quadratic, so it accelerates like something actually falling.
+        const drop = progress * progress;
+        const from = COIN_START_HEIGHT;
+        const to = slotHeight - COIN_SINK;
+
+        coin.visible = true;
+        coin.position.y = from + (to - from) * drop;
+        // Converges on the slot from wherever it started, so each coin arcs in.
+        coin.position.x = coin_.offsetX * (1 - drop);
+        coin.position.z = coin_.offsetZ * (1 - drop);
+        // Face-on at the top, edge-on by the time it reaches the slot — the way a
+        // coin has to be to enter one at all — plus its own tumble.
+        coin.rotation.x = Math.PI / 2 + coin_.tilt * (1 - drop);
+        coin.rotation.y = drop * (Math.PI / 2);
+        coin.rotation.z = progress * coin_.tumble;
+
+        if (progress >= 1) {
+          // Only a coin standing for a real entry makes the box flinch.
+          if (coin_.marksTransaction) applyPulse(1);
+          coin_ = null;
+          coin.visible = false;
+          nextAmbientAt = elapsed + between(COIN_AMBIENT_MIN_SECONDS, COIN_AMBIENT_MAX_SECONDS);
+        }
+      }
+
       pulse.velocity += (-PULSE_STIFFNESS * pulse.offset - PULSE_DAMPING * pulse.velocity) * delta;
       pulse.offset = Math.max(
         -PULSE_CEILING,
@@ -433,7 +607,21 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
           cameraZ: Number(camera.position.z.toFixed(2)),
           raster: [renderTarget.width, renderTarget.height],
           fill: fillRef.current,
+          slotHeight: Number(slotHeight.toFixed(3)),
+          coinProgress: coin_ ? Number(coin_.progress.toFixed(3)) : null,
+          coinMarksTransaction: coin_?.marksTransaction ?? null,
+          coinVisible: coin.visible,
+          coinPos: [coin.position.x, coin.position.y, coin.position.z].map((v) =>
+            Number(v.toFixed(3)),
+          ),
+          nextAmbientIn: Number((nextAmbientAt - elapsed).toFixed(2)),
         }),
+        /** Drops a coin on demand, for checking the animation without a Sanity write. */
+        dropCoin: () => {
+          pendingRef.current = { direction: 1 };
+        },
+        /** An ambient coin, to check it does not pulse the box. */
+        dropAmbient: () => releaseCoin(false),
       };
     }
 
@@ -448,6 +636,7 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       .then((buffer) => {
         if (disposed) return;
         geometry = parseMesh(buffer);
+        slotHeight = findSlotHeight(geometry);
         spinGroup.add(new THREE.Mesh(geometry, shell));
       })
       .catch((error) => {
@@ -470,6 +659,7 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       observer.disconnect();
 
       geometry?.dispose();
+      coinGeometry.dispose();
       shell.dispose();
       screenGeometry.dispose();
       ditherMaterial.dispose();

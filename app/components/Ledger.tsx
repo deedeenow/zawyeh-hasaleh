@@ -1,5 +1,5 @@
 import { formatAmount, formatDate, formatFullDate, MINUS } from '@/lib/format';
-import type { Dictionary } from '@/lib/i18n';
+import { pickNote, pickText, type Dictionary } from '@/lib/i18n';
 import type { Entry } from '@/lib/types';
 
 interface LedgerProps {
@@ -68,8 +68,10 @@ export default function Ledger({ entries, totalInMinor, totalOutMinor, dict }: L
                       {dict.digits(formatAmount(entry.amountMinor))}
                     </span>
                   </span>
-                  <span className="entry-label">{entry.label}</span>
-                  {entry.note ? <span className="entry-note">{entry.note}</span> : null}
+                  <span className="entry-label">{pickText(entry, dict.locale)}</span>
+                  {pickNote(entry, dict.locale) ? (
+                    <span className="entry-note">{pickNote(entry, dict.locale)}</span>
+                  ) : null}
                 </div>
               </li>
             ))}

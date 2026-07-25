@@ -5,7 +5,7 @@ import MoneyBox from './MoneyBox';
 import Ledger from './Ledger';
 import About from './About';
 import { formatAmount, formatBalance, formatDate } from '@/lib/format';
-import { getDictionary, type Locale } from '@/lib/i18n';
+import { getDictionary, pickText, type Locale } from '@/lib/i18n';
 import type { LedgerView } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 20_000;
@@ -99,7 +99,7 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
                 </span>
                 <span className="figure num">{dict.digits(formatAmount(latest.amountMinor))}</span>
                 <span>{dict.currency}</span>
-                <span>{latest.label}</span>
+                <span>{pickText(latest, dict.locale)}</span>
                 <span className="figure num">{dict.digits(formatDate(latest.date))}</span>
               </p>
             ) : (

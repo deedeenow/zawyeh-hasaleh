@@ -10,10 +10,17 @@ export interface Entry {
   /** ISO-8601 instant the money actually moved. */
   date: string;
   kind: EntryKind;
-  /** Always positive. Minor units (cents/fils) so no floating-point money. */
+  /** Always positive. Minor units (fils) so no floating-point money. */
   amountMinor: number;
+  /**
+   * Entry text is authored per language in the Studio. `label` is the English one
+   * and `labelAr` the Arabic; the UI picks by locale and falls back to whichever
+   * exists, so a half-translated entry still renders rather than going blank.
+   */
   label: string;
+  labelAr?: string;
   note?: string;
+  noteAr?: string;
 }
 
 export interface LedgerFile {

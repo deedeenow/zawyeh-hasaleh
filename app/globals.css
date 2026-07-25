@@ -6,13 +6,15 @@
    ========================================================================== */
 
 :root {
-  /* Deep emerald on white. 6.55:1 against the ground — comfortably AA for the
-     13px body and the 10px eyebrows, and close to AAA. The bright "signal"
-     greens all fail AA at this text size, which is why this one is dark.
+  /* Green on white. 5.28:1 against the ground, which still clears AA for the
+     smallest label on the page. Brighter and more clearly green than the
+     teal-leaning #046b4a it replaces; a genuinely vivid green like #16a34a sits at
+     3.30:1 and fails AA at any of these text sizes, so this is about as bright as
+     the palette can go without losing legibility.
      MoneyBox.tsx reads both of these at runtime so the WebGL dither uses exactly
      the same pair; they are not duplicated in JS. */
   --ground: #ffffff;
-  --mark: #046b4a;
+  --mark: #0a7c42;
 
   /* One number governs the raster. Change it and the 3D dither follows
      (see DITHER_PIXEL in app/components/MoneyBox.tsx). */
@@ -42,7 +44,7 @@
   --body-ar: "Geeza Pro", "Noto Naskh Arabic", Tahoma, sans-serif;
 
   --gutter: clamp(1.125rem, 3.2vw, 2.5rem);
-  --rail: clamp(19rem, 30vw, 25rem);
+  --rail: clamp(21rem, 32vw, 27rem);
 }
 
 *,
@@ -75,8 +77,8 @@ body {
   background: var(--ground);
   color: var(--mark);
   font-family: var(--mono);
-  font-size: 0.8125rem;
-  line-height: 1.5;
+  font-size: 0.9375rem;
+  line-height: 1.55;
   overflow: hidden;
 }
 
@@ -94,7 +96,7 @@ body {
 
 .eyebrow {
   font-family: var(--display);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   line-height: 1;
@@ -199,21 +201,21 @@ body {
 
 .wordmark {
   font-family: var(--display-ar);
-  font-size: 1.375rem;
+  font-size: 1.625rem;
   line-height: 1;
   letter-spacing: 0;
 }
 
 .brand {
   font-family: var(--display);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   line-height: 1;
 }
 
 .brand.arabic {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
 }
 
 .masthead-nav {
@@ -226,7 +228,7 @@ body {
    as siblings rather than as a button next to a link. */
 .link-quiet {
   font-family: var(--display);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   line-height: 1;
@@ -244,11 +246,11 @@ body {
 }
 
 .link-quiet.arabic {
-  font-size: 0.875rem;
+  font-size: 1rem;
 }
 
 .rail-count {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -329,7 +331,7 @@ body {
   align-items: baseline;
   flex-wrap: wrap;
   gap: 0.5rem;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.06em;
 }
 
@@ -338,7 +340,7 @@ body {
   color: var(--ground);
   padding: 0.15rem 0.4rem;
   font-family: var(--display);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
@@ -347,7 +349,7 @@ body {
   display: flex;
   gap: 1.5rem;
   margin-top: 0.35rem;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
@@ -472,7 +474,7 @@ body {
 }
 
 .entry-date {
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.14em;
   display: block;
   margin-bottom: 0.2rem;
@@ -480,8 +482,8 @@ body {
 
 .entry-amount {
   font-variant-numeric: tabular-nums;
-  font-size: 1.0625rem;
-  line-height: 1.1;
+  font-size: 1.25rem;
+  line-height: 1.15;
   display: block;
   letter-spacing: -0.02em;
 }
@@ -496,7 +498,7 @@ body {
   display: block;
   margin-top: 0.35rem;
   padding-top: 0.35rem;
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   background-image: var(--rule-h);
   background-repeat: no-repeat;
   background-position: 0 0;
@@ -532,7 +534,7 @@ body {
 }
 
 .muted {
-  font-size: 0.6875rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.06em;
 }
 .sr-only {
@@ -599,7 +601,7 @@ body {
 /* The only inverted control on the page, so there is no doubt what closes this. */
 .dialog-close {
   font-family: var(--display);
-  font-size: 0.5625rem;
+  font-size: 0.6875rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
   background: var(--mark);
@@ -617,7 +619,7 @@ body {
 }
 
 .dialog-close:lang(ar) {
-  font-size: 0.8125rem;
+  font-size: 0.9375rem;
 }
 
 .dialog-body {
