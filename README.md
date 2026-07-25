@@ -169,7 +169,15 @@ structural rather than cosmetic:
   element is `lang="ar"`, so an unanchored `:lang(ar) .eyebrow` also matches on the
   English route — which silently applied an Arabic font to Latin text and, because
   font fallback is per-glyph, ate the word spaces.
-- **Figures stay Menlo in both languages**, wrapped in `.num`
+- **The Arabic page uses Arabic-Indic digits** (`٠١٢٣٤٥٦٧٨٩`), converted in one
+  place — `toArabicDigits` in `lib/i18n.ts`, exposed as `dict.digits()`. It
+  deliberately leaves `.` and `,` alone rather than substituting the Arabic
+  decimal (U+066B) and thousands (U+066C) separators, which are patchily supported
+  and risk tofu. Two consequences worth knowing: Menlo has no Arabic-Indic digits,
+  so Arabic figures fall to an Arabic face, and **the ledger columns no longer
+  align to the pixel** — no Arabic face here has monospaced numerals. That is the
+  price of the correct digits.
+- **Latin figures stay Menlo**, wrapped in `.num`
   (`direction: ltr; unicode-bidi: isolate`). Without the isolate, RTL's bidi
   reordering moves a leading minus to the far side and `−515` renders as `515−`.
 - Entry text is shown exactly as typed in the Studio — it is not translated.
@@ -203,7 +211,20 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
 
 ## How the design works
 
-- **Two colours.** `#000` and `#fff`, no accent. Emphasis is inversion, never hue.
+- **Two colours.** Deep emerald `#046b4a` on white `#ffffff`, no accent. Emphasis
+  is inversion, never hue. The tokens are `--ground` and `--mark` — the ground is
+  the paper, the mark is everything drawn on it.
+  The green is dark on purpose: at 6.55:1 against white it clears AA comfortably
+  for the 13px body and 10px eyebrows. Every bright "signal" green fails AA at
+  those sizes, so a lighter one is not available without dropping text contrast.
+  **`MoneyBox.tsx` reads both tokens out of the stylesheet at runtime**, so the
+  WebGL dither uses exactly the same pair as the CSS checkerboards and the palette
+  is never duplicated in JS. It deliberately does not build a `THREE.Color`: three
+  would convert into its linear working space, and the dither pass writes straight
+  to the canvas with no sRGB encode, which renders the green far too dark.
+  The render target still clears to black — the scene is rendered as *luminance* and
+  compared against the dither threshold, so a light clear would read as
+  "everything on". Colour is applied only in the final screen pass.
 - **One raster.** `--px: 3px` in `app/globals.css` sets the block size for every
   apparent grey — rules, the ledger spine, the scrollbar — and `DITHER_PIXEL` in
   `app/components/MoneyBox.tsx` matches it, so the WebGL dither and the CSS
@@ -224,6 +245,28 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
   would render as grey. A 50% scrim of pure ink half-erases the page instead,
   dimming it without leaving 1-bit.
 
+## The favicon
+
+`app/icon.svg` is **generated from the scan**, not drawn by hand:
+
+```bash
+npm run favicon
+```
+
+Because the Hasaleh is a body of revolution, its silhouette is completely
+determined by the maximum radius at each height. The script measures `r(y)` from
+`public/hasaleh.mesh` and mirrors that profile about the axis, so the outline is
+the real object's, to within the band resolution.
+
+`npm run model` runs it too, since the icon derives from the mesh.
+
+Tuned for where a favicon is actually seen: 26 bands rather than the mesh's full
+detail (which becomes noise at 16px), a deliberately heavy 3-unit stroke (a thin
+one vanishes at that size), and two smoothing passes to take the scan's
+measurement jitter out of the outline. It also carries a
+`prefers-color-scheme: dark` rule — the deep brand green disappears against a dark
+browser toolbar, so it lightens to `#34d399` there.
+
 ## Structure
 
 ```
@@ -233,6 +276,7 @@ app/
   globals.css              all design tokens and layout
   page.tsx                 Arabic, RTL
   en/page.tsx              English, LTR
+  icon.svg                 favicon, generated from the scan
   components/
     Bank.tsx               client shell, polls for new entries
     MoneyBox.tsx           loads the scan + Bayer dither post-pass
@@ -252,6 +296,7 @@ sanity/
     ledgerEntry.ts         copy into your Studio project
 scripts/
   prepare-model.mjs        OBJ -> decimated, uprighted binary mesh
+  make-favicon.mjs         mesh -> silhouette outline in app/icon.svg
   seed-sanity.mjs          one-time import of the sample entries
 data/
   seed-entries.json        sample data for the import; unused at runtime

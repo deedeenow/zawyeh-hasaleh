@@ -25,11 +25,11 @@ export default function Ledger({ entries, totalInMinor, totalOutMinor, dict }: L
         <div className="rail-columns eyebrow">
           <span>
             {dict.columnIn} ·{' '}
-            <span className="figure num">{formatAmount(totalInMinor)}</span> {dict.currency}
+            <span className="figure num">{dict.digits(formatAmount(totalInMinor))}</span> {dict.currency}
           </span>
           <span>
             {dict.columnOut} ·{' '}
-            <span className="figure num">{formatAmount(totalOutMinor)}</span> {dict.currency}
+            <span className="figure num">{dict.digits(formatAmount(totalOutMinor))}</span> {dict.currency}
           </span>
         </div>
       </header>
@@ -56,7 +56,7 @@ export default function Ledger({ entries, totalInMinor, totalOutMinor, dict }: L
                 <div className="entry-cell">
                   <span className="entry-date figure num">
                     <time dateTime={entry.date} title={formatFullDate(entry.date, dict.locale)}>
-                      {formatDate(entry.date)}
+                      {dict.digits(formatDate(entry.date))}
                     </time>
                   </span>
                   <span className="entry-amount">
@@ -65,7 +65,7 @@ export default function Ledger({ entries, totalInMinor, totalOutMinor, dict }: L
                     </span>
                     <span className="figure num">
                       <span aria-hidden="true">{entry.kind === 'in' ? '+' : MINUS}</span>
-                      {formatAmount(entry.amountMinor)}
+                      {dict.digits(formatAmount(entry.amountMinor))}
                     </span>
                   </span>
                   <span className="entry-label">{entry.label}</span>

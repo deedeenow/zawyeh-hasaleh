@@ -47,6 +47,26 @@ export interface Dictionary {
   aboutClose: string;
   /** Arabic needs dual and two plural forms; English needs one. */
   entryCount: (n: number) => string;
+  /**
+   * Localises the digits in an already-formatted string. Arabic-Indic digits on
+   * the Arabic page; identity in English.
+   */
+  digits: (value: string) => string;
+}
+
+const ARABIC_INDIC = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'];
+
+/**
+ * Swaps Western digits for Arabic-Indic ones (U+0660–U+0669).
+ *
+ * Deliberately leaves "." and "," alone rather than substituting the Arabic
+ * decimal (U+066B) and thousands (U+066C) separators: those are patchily supported
+ * in fonts and would risk tofu, and Arabic-Indic digits alongside ASCII separators
+ * is what most real-world Jordanian signage and interfaces use. To switch, map
+ * them here — it is the only place digits are localised.
+ */
+function toArabicDigits(value: string): string {
+  return value.replace(/[0-9]/g, (d) => ARABIC_INDIC[Number(d)]);
 }
 
 const ar: Dictionary = {
@@ -80,12 +100,14 @@ const ar: Dictionary = {
   ],
   aboutClose: 'إغلاق',
   entryCount: (n) => {
+    const d = toArabicDigits(String(n));
     if (n === 0) return 'لا قيود';
     if (n === 1) return 'قيد واحد';
     if (n === 2) return 'قيدان';
-    if (n <= 10) return `${n} قيود`;
-    return `${n} قيداً`;
+    if (n <= 10) return `${d} قيود`;
+    return `${d} قيداً`;
   },
+  digits: toArabicDigits,
 };
 
 const en: Dictionary = {
@@ -119,6 +141,7 @@ const en: Dictionary = {
   ],
   aboutClose: 'Close',
   entryCount: (n) => (n === 1 ? '1 entry' : `${n} entries`),
+  digits: (value) => value,
 };
 
 export const DICTIONARIES: Record<Locale, Dictionary> = { ar, en };

@@ -130,6 +130,8 @@ const DITHER_FRAGMENT_SHADER = /* glsl */ `
   uniform vec2 uRasterSize;
   uniform float uPixel;
   uniform float uDevelop;
+  uniform vec3 uGround;
+  uniform vec3 uMark;
 
   float bayer2(vec2 a) {
     a = floor(a);
@@ -156,9 +158,44 @@ const DITHER_FRAGMENT_SHADER = /* glsl */ `
     // Strictly greater, not step(): one cell of the Bayer matrix is exactly 0.0,
     // and step() would light it even where the scene is pure black — which
     // scatters a dot lattice across the empty background.
-    gl_FragColor = vec4(vec3(lum > threshold ? 1.0 : 0.0), 1.0);
+    float on = lum > threshold ? 1.0 : 0.0;
+
+    // The scene is rendered as luminance into a black-cleared target; only this
+    // final pass knows about colour, mapping off -> ground and on -> mark.
+    gl_FragColor = vec4(mix(uGround, uMark, on), 1.0);
   }
 `;
+
+/**
+ * Pulls a colour token out of the stylesheet so globals.css stays the single
+ * source of truth for the palette — the dither must use exactly the same pair the
+ * CSS checkerboards do, or the page stops reading as one raster.
+ *
+ * Returns raw sRGB components, deliberately NOT a THREE.Color: three would convert
+ * the value into its linear working space, and the dither pass is a raw
+ * ShaderMaterial that writes to the canvas without an sRGB encode. Passing linear
+ * values through it renders the green markedly too dark.
+ *
+ * A 2D canvas does the parsing, so any CSS colour notation resolves correctly
+ * rather than only `#rrggbb`.
+ */
+function readColor(token: string, fallback: string): THREE.Vector3 {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+  const probe = document.createElement('canvas').getContext('2d');
+  if (!probe) return new THREE.Vector3(0, 0, 0);
+
+  probe.fillStyle = fallback;
+  if (raw !== '') probe.fillStyle = raw; // Invalid values leave fillStyle untouched.
+  const resolved = probe.fillStyle as string;
+
+  const match = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(resolved);
+  if (!match) return new THREE.Vector3(0, 0, 0);
+  return new THREE.Vector3(
+    parseInt(match[1], 16) / 255,
+    parseInt(match[2], 16) / 255,
+    parseInt(match[3], 16) / 255,
+  );
+}
 
 /** Reads the binary written by scripts/prepare-model.mjs. */
 function parseMesh(buffer: ArrayBuffer): THREE.BufferGeometry {
@@ -244,6 +281,10 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
     // Pixel ratio is deliberately pinned to 1: the raster is measured in CSS
     // pixels, so a retina buffer would halve the dot size.
     renderer.setPixelRatio(1);
+    // Stays black regardless of the palette: the scene is rendered as luminance
+    // into the target and compared against the dither threshold, so a light clear
+    // would read as "everything on". Colour is applied only in the screen pass,
+    // whose full-screen quad covers the canvas anyway.
     renderer.setClearColor(0x000000, 1);
     host.appendChild(renderer.domElement);
 
@@ -278,6 +319,8 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
         uRasterSize: { value: new THREE.Vector2(2, 2) },
         uPixel: { value: DITHER_PIXEL },
         uDevelop: { value: 0 },
+        uGround: { value: readColor('--ground', '#ffffff') },
+        uMark: { value: readColor('--mark', '#046b4a') },
       },
       vertexShader: DITHER_VERTEX_SHADER,
       fragmentShader: DITHER_FRAGMENT_SHADER,

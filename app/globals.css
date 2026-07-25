@@ -1,13 +1,18 @@
 /* ==========================================================================
    حصالة / HASALEH — 1-bit design tokens
-   Two values, no accent. Every apparent grey on this page is a real 3px
+   Two values, no accent. Every apparent tint on this page is a real 3px
    checkerboard on the same grid as the WebGL dither, so the whole document
-   reads as one raster. Nothing here is allowed to be anti-aliased grey.
+   reads as one raster. Nothing here is allowed to be an anti-aliased midtone.
    ========================================================================== */
 
 :root {
-  --ink: #000000;
-  --paper: #ffffff;
+  /* Deep emerald on white. 6.55:1 against the ground — comfortably AA for the
+     13px body and the 10px eyebrows, and close to AAA. The bright "signal"
+     greens all fail AA at this text size, which is why this one is dark.
+     MoneyBox.tsx reads both of these at runtime so the WebGL dither uses exactly
+     the same pair; they are not duplicated in JS. */
+  --ground: #ffffff;
+  --mark: #046b4a;
 
   /* One number governs the raster. Change it and the 3D dither follows
      (see DITHER_PIXEL in app/components/MoneyBox.tsx). */
@@ -15,15 +20,15 @@
   --tile: 6px;
 
   /* 50% — checkerboard. 25% / 75% — single quadrant, on or off. */
-  --d50: conic-gradient(var(--paper) 0 25%, transparent 0 50%, var(--paper) 0 75%, transparent 0);
-  --d25: conic-gradient(var(--paper) 0 25%, transparent 0);
-  --d75: conic-gradient(transparent 0 25%, var(--paper) 0);
+  --d50: conic-gradient(var(--mark) 0 25%, transparent 0 50%, var(--mark) 0 75%, transparent 0);
+  --d25: conic-gradient(var(--mark) 0 25%, transparent 0);
+  --d75: conic-gradient(transparent 0 25%, var(--mark) 0);
 
   /* Dithered hairlines. A 1-bit rule cannot be dimmed, only broken up. */
-  --rule-h: repeating-linear-gradient(90deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
-  --rule-v: repeating-linear-gradient(180deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
+  --rule-h: repeating-linear-gradient(90deg, var(--mark) 0 var(--px), transparent var(--px) var(--tile));
+  --rule-v: repeating-linear-gradient(180deg, var(--mark) 0 var(--px), transparent var(--px) var(--tile));
   /* 25% — for rules that need to sit back without becoming grey. */
-  --rule-h-faint: repeating-linear-gradient(90deg, var(--paper) 0 var(--px), transparent var(--px) calc(var(--tile) * 2));
+  --rule-h-faint: repeating-linear-gradient(90deg, var(--mark) 0 var(--px), transparent var(--px) calc(var(--tile) * 2));
 
   --display: Copperplate, "Copperplate Gothic Light", "Engravers MT", "Bodoni 72 Smallcaps", serif;
   --mono: Menlo, Monaco, "SF Mono", "DejaVu Sans Mono", monospace;
@@ -67,22 +72,21 @@ figure {
 }
 
 body {
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--ground);
+  color: var(--mark);
   font-family: var(--mono);
   font-size: 0.8125rem;
   line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
 ::selection {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--mark);
+  color: var(--ground);
 }
 
 :focus-visible {
-  outline: 2px solid var(--paper);
+  outline: 2px solid var(--mark);
   outline-offset: 2px;
 }
 
@@ -146,11 +150,18 @@ body {
   font-family: var(--body-ar);
 }
 
-/* Figures stay Menlo in both languages. The tabular digits are a signature of the
-   design, and no Arabic face here has monospaced numerals. */
+/* The Arabic page uses Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩), which Menlo does not
+   contain — left to fall back per-glyph they would land in an arbitrary face. So
+   Arabic figures are set in an Arabic face that has them, with --mono still in the
+   chain to catch the ASCII separators.
+
+   The cost is real: no Arabic face here has monospaced numerals, so the ledger's
+   columns no longer align to the pixel the way the Latin tabular figures do. That
+   is the price of using the correct digits, and it is the right trade. */
 .shell:lang(ar) .figure,
 .shell:lang(ar) .balance {
-  font-family: var(--mono);
+  font-family: "Geeza Pro", "SF Arabic", var(--mono);
+  font-variant-numeric: normal;
 }
 
 /* --- shell --------------------------------------------------------------- */
@@ -229,7 +240,7 @@ body {
 }
 
 .link-quiet:hover {
-  border-bottom-color: var(--paper);
+  border-bottom-color: var(--mark);
 }
 
 .link-quiet.arabic {
@@ -273,7 +284,7 @@ body {
 .canvas-fallback {
   position: absolute;
   inset: 12%;
-  border: 1px solid var(--paper);
+  border: 1px solid var(--mark);
   background-image: var(--d25);
   background-size: var(--tile) var(--tile);
   display: grid;
@@ -284,7 +295,7 @@ body {
 
 .canvas-fallback p {
   margin: 0;
-  background: var(--ink);
+  background: var(--ground);
   padding: 0.5rem 0.75rem;
   max-width: 22ch;
 }
@@ -323,8 +334,8 @@ body {
 }
 
 .readout-last-tag {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--mark);
+  color: var(--ground);
   padding: 0.15rem 0.4rem;
   font-family: var(--display);
   font-size: 0.5625rem;
@@ -371,7 +382,7 @@ body {
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: var(--paper);
+  background: var(--mark);
 }
 
 .rail-title {
@@ -396,7 +407,7 @@ body {
   overflow-x: hidden;
   min-height: 0;
   scrollbar-width: thin;
-  scrollbar-color: var(--paper) var(--ink);
+  scrollbar-color: var(--mark) var(--ground);
 }
 
 .rail-scroll::-webkit-scrollbar {
@@ -404,11 +415,11 @@ body {
 }
 
 .rail-scroll::-webkit-scrollbar-track {
-  background: var(--ink);
+  background: var(--ground);
 }
 
 .rail-scroll::-webkit-scrollbar-thumb {
-  background-color: var(--paper);
+  background-color: var(--mark);
   background-image: var(--d75);
   background-size: var(--tile) var(--tile);
 }
@@ -497,7 +508,7 @@ body {
 .entry-latest .entry-note {
   background-image: repeating-linear-gradient(
     90deg,
-    var(--ink) 0 var(--px),
+    var(--ground) 0 var(--px),
     transparent var(--px) var(--tile)
   );
 }
@@ -505,8 +516,8 @@ body {
 /* The newest entry is the only inverted thing in the ledger — it is the one
    the bank just reacted to. */
 .entry-latest .entry-cell {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--mark);
+  color: var(--ground);
 }
 
 .entries-empty {
@@ -548,9 +559,9 @@ body {
   /* A translucent black would render as grey. A 50% checkerboard of pure ink
      half-erases the page instead — dimming it without leaving 1-bit. */
   background-image: conic-gradient(
-    var(--ink) 0 25%,
+    var(--ground) 0 25%,
     transparent 0 50%,
-    var(--ink) 0 75%,
+    var(--ground) 0 75%,
     transparent 0
   );
   background-size: var(--tile) var(--tile);
@@ -561,8 +572,8 @@ body {
   width: min(54ch, 100%);
   max-height: 100%;
   overflow-y: auto;
-  background: var(--ink);
-  border: 1px solid var(--paper);
+  background: var(--ground);
+  border: 1px solid var(--mark);
 }
 
 .dialog-head {
@@ -573,7 +584,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.85rem var(--gutter);
-  background: var(--ink);
+  background: var(--ground);
 }
 
 .dialog-head::after {
@@ -582,7 +593,7 @@ body {
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: var(--paper);
+  background: var(--mark);
 }
 
 /* The only inverted control on the page, so there is no doubt what closes this. */
@@ -591,9 +602,9 @@ body {
   font-size: 0.5625rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--paper);
+  background: var(--mark);
+  color: var(--ground);
+  border: 1px solid var(--mark);
   border-radius: 0;
   padding: 0.3rem 0.6rem;
   cursor: pointer;

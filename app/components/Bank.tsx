@@ -88,7 +88,7 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
             </h1>
 
             <p className="balance">
-              <span className="figure num">{formatBalance(ledger.balanceMinor)}</span>
+              <span className="figure num">{dict.digits(formatBalance(ledger.balanceMinor))}</span>
               <span className="balance-currency">{dict.currency}</span>
             </p>
 
@@ -97,10 +97,10 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
                 <span className="readout-last-tag">
                   {latest.kind === 'in' ? dict.lastIn : dict.lastOut}
                 </span>
-                <span className="figure num">{formatAmount(latest.amountMinor)}</span>
+                <span className="figure num">{dict.digits(formatAmount(latest.amountMinor))}</span>
                 <span>{dict.currency}</span>
                 <span>{latest.label}</span>
-                <span className="figure num">{formatDate(latest.date)}</span>
+                <span className="figure num">{dict.digits(formatDate(latest.date))}</span>
               </p>
             ) : (
               <p className="readout-last">
@@ -111,12 +111,12 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
             <p className="totals">
               <span>
                 {dict.totalIn}{' '}
-                <span className="figure num">{formatAmount(ledger.totalInMinor)}</span>{' '}
+                <span className="figure num">{dict.digits(formatAmount(ledger.totalInMinor))}</span>{' '}
                 {dict.currency}
               </span>
               <span>
                 {dict.totalOut}{' '}
-                <span className="figure num">{formatAmount(ledger.totalOutMinor)}</span>{' '}
+                <span className="figure num">{dict.digits(formatAmount(ledger.totalOutMinor))}</span>{' '}
                 {dict.currency}
               </span>
             </p>
