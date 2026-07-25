@@ -216,17 +216,25 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
 
 ## How the design works
 
-- **Two colours.** Deep emerald `#046b4a` on white `#ffffff`, no accent. Emphasis
-  is inversion, never hue. The tokens are `--ground` and `--mark` — the ground is
-  the paper, the mark is everything drawn on it.
-  The green is dark on purpose: at 6.55:1 against white it clears AA comfortably
-  for the 13px body and 10px eyebrows. Every bright "signal" green fails AA at
-  those sizes, so a lighter one is not available without dropping text contrast.
+- **Two colours.** Sapphire `#0f52ba` on white `#ffffff`, no accent. Emphasis is
+  inversion, never hue. The tokens are `--ground` and `--mark` — the ground is the
+  paper, the mark is everything drawn on it.
+  7.15:1 against the ground, which is AAA rather than merely AA. Blue can be both
+  vivid and high-contrast in a way green cannot: its luminance coefficient is low, so
+  a saturated blue stays dark. The greens this went through topped out near 5.3:1
+  before turning pale, and the extra contrast also helps the fine dithered detail on
+  the object read against white. Chosen over Tailwind's `#2563eb` (5.17:1), which is
+  the default tech blue.
+  **`--mark` and `--ground` are the single source of truth.** `MoneyBox.tsx` reads
+  them at runtime and `scripts/make-favicon.mjs` parses them out of the stylesheet,
+  so the palette is never restated. That indirection exists because it was once
+  hardcoded in three places and silently kept the old colour through a palette
+  change — the favicon stopped matching the site and nothing caught it.
   **`MoneyBox.tsx` reads both tokens out of the stylesheet at runtime**, so the
   WebGL dither uses exactly the same pair as the CSS checkerboards and the palette
   is never duplicated in JS. It deliberately does not build a `THREE.Color`: three
   would convert into its linear working space, and the dither pass writes straight
-  to the canvas with no sRGB encode, which renders the green far too dark.
+  to the canvas with no sRGB encode, which renders the colour far too dark.
   The render target still clears to black — the scene is rendered as *luminance* and
   compared against the dither threshold, so a light clear would read as
   "everything on". Colour is applied only in the final screen pass.
@@ -302,8 +310,9 @@ Tuned for where a favicon is actually seen: 26 bands rather than the mesh's full
 detail (which becomes noise at 16px), a deliberately heavy 3-unit stroke (a thin
 one vanishes at that size), and two smoothing passes to take the scan's
 measurement jitter out of the outline. It also carries a
-`prefers-color-scheme: dark` rule — the deep brand green disappears against a dark
-browser toolbar, so it lightens to `#34d399` there.
+`prefers-color-scheme: dark` rule — the brand colour disappears against a dark
+browser toolbar, so it lightens to `--mark-on-dark` there. Both colours are read from
+`globals.css` at generation time, never restated in the script.
 
 ## Structure
 

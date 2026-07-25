@@ -18,7 +18,23 @@ import { fileURLToPath } from 'node:url';
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
 const MESH = path.join(ROOT, 'public', 'hasaleh.mesh');
+const CSS = path.join(ROOT, 'app', 'globals.css');
 const OUTPUT = path.join(ROOT, 'app', 'icon.svg');
+
+/**
+ * Reads a colour token out of globals.css rather than restating it here. These were
+ * hardcoded once and silently kept the old brand colour through a palette change,
+ * so the favicon stopped matching the site.
+ */
+function token(name) {
+  const css = fs.readFileSync(CSS, 'utf8');
+  const match = new RegExp(`--${name}:\\s*(#[0-9a-fA-F]{3,8})\\s*;`).exec(css);
+  if (!match) throw new Error(`--${name} not found in app/globals.css`);
+  return match[1];
+}
+
+const MARK = token('mark');
+const MARK_ON_DARK = token('mark-on-dark');
 
 /**
  * Height bands. Fewer than the mesh could give: a favicon lives at 16-32px, where
@@ -113,18 +129,18 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}"
        band and mirrored about the axis of revolution. Do not hand-edit. -->
   <style>
     /* A favicon sits in browser chrome, not on the page, so it cannot assume a
-       white ground. The deep brand green disappears against a dark toolbar;
-       a lighter emerald keeps the outline legible there. */
-    .hasaleh { stroke: #046b4a; }
+       white ground. The brand colour disappears against a dark toolbar, so a
+       lighter tint takes over there. Both come from globals.css. */
+    .hasaleh { stroke: ${MARK}; }
     @media (prefers-color-scheme: dark) {
-      .hasaleh { stroke: #34d399; }
+      .hasaleh { stroke: ${MARK_ON_DARK}; }
     }
   </style>
   <path
     class="hasaleh"
     d="${d}"
     fill="none"
-    stroke="#046b4a"
+    stroke="${MARK}"
     stroke-width="${STROKE}"
     stroke-linejoin="round"
   />
@@ -133,4 +149,4 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}"
 
 fs.writeFileSync(OUTPUT, svg);
 console.log(`profile: ${BANDS} bands, max radius ${maxRadius.toFixed(3)}, height ${(yMax - yMin).toFixed(3)}`);
-console.log(`wrote app/icon.svg  ${svg.length} bytes`);
+console.log(`wrote app/icon.svg  ${svg.length} bytes  (stroke ${MARK}, dark ${MARK_ON_DARK})`);

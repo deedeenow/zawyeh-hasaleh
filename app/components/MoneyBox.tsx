@@ -249,7 +249,7 @@ const DITHER_FRAGMENT_SHADER = /* glsl */ `
  * Returns raw sRGB components, deliberately NOT a THREE.Color: three would convert
  * the value into its linear working space, and the dither pass is a raw
  * ShaderMaterial that writes to the canvas without an sRGB encode. Passing linear
- * values through it renders the green markedly too dark.
+ * values through it renders the colour markedly too dark.
  *
  * A 2D canvas does the parsing, so any CSS colour notation resolves correctly
  * rather than only `#rrggbb`.
@@ -459,7 +459,7 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
         uPixel: { value: DITHER_PIXEL },
         uDevelop: { value: 0 },
         uGround: { value: readColor('--ground', '#ffffff') },
-        uMark: { value: readColor('--mark', '#046b4a') },
+        uMark: { value: readColor('--mark', '#0f52ba') },
       },
       vertexShader: DITHER_VERTEX_SHADER,
       fragmentShader: DITHER_FRAGMENT_SHADER,

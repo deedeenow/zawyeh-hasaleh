@@ -6,15 +6,21 @@
    ========================================================================== */
 
 :root {
-  /* Green on white. 5.28:1 against the ground, which still clears AA for the
-     smallest label on the page. Brighter and more clearly green than the
-     teal-leaning #046b4a it replaces; a genuinely vivid green like #16a34a sits at
-     3.30:1 and fails AA at any of these text sizes, so this is about as bright as
-     the palette can go without losing legibility.
-     MoneyBox.tsx reads both of these at runtime so the WebGL dither uses exactly
-     the same pair; they are not duplicated in JS. */
+  /* Sapphire on white, 7.15:1 against the ground — AAA, not merely AA.
+     Blue can be both vivid and high-contrast in a way green cannot: its luminance
+     coefficient is low, so a saturated blue stays dark. The greens this replaces
+     topped out around 5.3:1 before turning pale, and the extra contrast here also
+     helps the fine dithered detail on the object stand out against white.
+     Chosen over Tailwind's #2563eb (5.17:1), which is the default tech blue.
+     THIS PAIR IS THE SINGLE SOURCE OF TRUTH. MoneyBox.tsx reads both at runtime for
+     the WebGL dither, and scripts/make-favicon.mjs parses them out of this file, so
+     the palette is never restated anywhere else. */
   --ground: #ffffff;
-  --mark: #0a7c42;
+  --mark: #0f52ba;
+  /* Only for the favicon, which sits in browser chrome rather than on the page and
+     so cannot assume a white ground. The brand blue vanishes against a dark
+     toolbar. Not used anywhere in the page itself. */
+  --mark-on-dark: #7dd3fc;
 
   /* One number governs the raster. Change it and the 3D dither follows
      (see DITHER_PIXEL in app/components/MoneyBox.tsx). */
