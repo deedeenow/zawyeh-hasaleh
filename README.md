@@ -218,3 +218,12 @@ public/
   Renaming those two would remove the last of it.
 - The whole page is `.shell` inside `app/page.tsx`, so it lifts into a route of the
   bigger app as-is; the only global CSS is on `:root` and `body`.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE). Copyright holder is written as "Zawyeh"; change it
+if a different legal entity should hold it.
+
+Note this covers **everything in the repository**, including `public/hasaleh.mesh`,
+the processed 3D scan of the Hasaleh. If you would rather the scan not be reusable,
+keep the code MIT and move the mesh out to a separately-licensed asset.

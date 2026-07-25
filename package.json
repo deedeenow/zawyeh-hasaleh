@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "حصالة — the Zawyeh money box. A 1-bit dithered scan of the real object over a public transparency ledger, read from Sanity.",
+  "license": "MIT",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
