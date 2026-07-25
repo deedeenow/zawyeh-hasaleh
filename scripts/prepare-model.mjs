@@ -11,15 +11,16 @@
  *
  * Output format (public/hasaleh.mesh), little-endian:
  *   0  char[4]    "HSLH"
- *   4  uint32     format version (1)
+ *   4  uint32     format version (2)
  *   8  uint32     vertex count
  *  12  uint32     index count
  *  16  float32[3] bounds min (after transform)
  *  28  float32[3] bounds max (after transform)
- *  40  ...        zero padding to 64
+ *  40  uint32     bytes per index — 2 when the mesh fits in Uint16, else 4
+ *  44  ...        zero padding to 64
  *  64  float32[]  positions, 3 per vertex
  *   +  float32[]  normals, 3 per vertex (unit length)
- *   +  uint32[]   triangle indices
+ *   +  uint16[]/uint32[]  triangle indices
  */
 
 import fs from 'node:fs';
@@ -277,29 +278,37 @@ function normalise(positions) {
 function write(file, positions, normals, indices) {
   const box = bounds(positions);
   const HEADER = 64;
+  const vertexCount = positions.length / 3;
+
+  // Indices are the single biggest part of the file. Narrowing them to 16 bits
+  // when the vertex count allows it is exactly lossless and halves that half.
+  const narrow = vertexCount <= 0xffff;
+  const packed = narrow ? Uint16Array.from(indices) : indices;
+
   const buffer = Buffer.alloc(
-    HEADER + positions.byteLength + normals.byteLength + indices.byteLength,
+    HEADER + positions.byteLength + normals.byteLength + packed.byteLength,
   );
 
   buffer.write('HSLH', 0, 'ascii');
-  buffer.writeUInt32LE(1, 4);
-  buffer.writeUInt32LE(positions.length / 3, 8);
-  buffer.writeUInt32LE(indices.length, 12);
+  buffer.writeUInt32LE(2, 4);
+  buffer.writeUInt32LE(vertexCount, 8);
+  buffer.writeUInt32LE(packed.length, 12);
   for (let a = 0; a < 3; a++) {
     buffer.writeFloatLE(box.min[a], 16 + a * 4);
     buffer.writeFloatLE(box.max[a], 28 + a * 4);
   }
+  buffer.writeUInt32LE(narrow ? 2 : 4, 40);
 
   let offset = HEADER;
   Buffer.from(positions.buffer, positions.byteOffset, positions.byteLength).copy(buffer, offset);
   offset += positions.byteLength;
   Buffer.from(normals.buffer, normals.byteOffset, normals.byteLength).copy(buffer, offset);
   offset += normals.byteLength;
-  Buffer.from(indices.buffer, indices.byteOffset, indices.byteLength).copy(buffer, offset);
+  Buffer.from(packed.buffer, packed.byteOffset, packed.byteLength).copy(buffer, offset);
 
   fs.mkdirSync(path.dirname(file), { recursive: true });
   fs.writeFileSync(file, buffer);
-  return { buffer, box };
+  return { buffer, box, indexBytes: narrow ? 2 : 4 };
 }
 
 // ---------------------------------------------------------------------------
@@ -337,7 +346,8 @@ const scale = normalise(small.positions);
 const normals = computeNormals(small.positions, small.indices);
 console.log(`normalise  scale x${scale.toFixed(4)} to height ${TARGET_HEIGHT}`);
 
-const { buffer, box } = write(OUTPUT, small.positions, normals, small.indices);
+const { buffer, box, indexBytes } = write(OUTPUT, small.positions, normals, small.indices);
 console.log(`wrote  public/${path.basename(OUTPUT)}  ${(buffer.length / 1e6).toFixed(2)} MB`);
+console.log(`  ${indexBytes * 8}-bit indices`);
 console.log(`  bounds ${box.min.map((n) => n.toFixed(3)).join(' ')} → ${box.max.map((n) => n.toFixed(3)).join(' ')}`);
 console.log(`  ${(buffer.length / sourceSize * 100).toFixed(1)}% of the source size`);

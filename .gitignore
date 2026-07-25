@@ -3,7 +3,7 @@ node_modules/
 out/
 build/
 
-.env
+# .env holds committed PUBLIC config (see below). Only local overrides are ignored.
 .env.local
 .env*.local
 

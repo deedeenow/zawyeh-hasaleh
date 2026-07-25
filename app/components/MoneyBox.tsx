@@ -172,16 +172,22 @@ function parseMesh(buffer: ArrayBuffer): THREE.BufferGeometry {
   if (magic !== 'HSLH') throw new Error('not a Hasaleh mesh');
 
   const version = header.getUint32(4, true);
-  if (version !== 1) throw new Error(`unsupported mesh version ${version}`);
+  if (version !== 2) throw new Error(`unsupported mesh version ${version}`);
 
   const vertexCount = header.getUint32(8, true);
   const indexCount = header.getUint32(12, true);
+  const indexBytes = header.getUint32(40, true);
 
   const HEADER_BYTES = 64;
   const positionBytes = vertexCount * 3 * 4;
   const positions = new Float32Array(buffer, HEADER_BYTES, vertexCount * 3);
   const normals = new Float32Array(buffer, HEADER_BYTES + positionBytes, vertexCount * 3);
-  const indices = new Uint32Array(buffer, HEADER_BYTES + positionBytes * 2, indexCount);
+
+  const indexOffset = HEADER_BYTES + positionBytes * 2;
+  const indices =
+    indexBytes === 2
+      ? new Uint16Array(buffer, indexOffset, indexCount)
+      : new Uint32Array(buffer, indexOffset, indexCount);
 
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));

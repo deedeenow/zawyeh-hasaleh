@@ -65,19 +65,24 @@ npx sanity deploy
 
 ### 3. Point this app at the project
 
-```bash
-cp .env.local.example .env.local
-```
+Already done — `.env` is committed with the live values:
 
-Fill in `NEXT_PUBLIC_SANITY_PROJECT_ID` (from `sanity.io/manage`), and optionally
-`NEXT_PUBLIC_STUDIO_URL` so the masthead links to the Studio. None of these are
-secrets.
+| | |
+| --- | --- |
+| Project | `Zawyeh` — `3a03n44v` |
+| Dataset | `production` (public) |
+| Studio | https://zawyeh-hasaleh.sanity.studio/ |
+
+`.env` is tracked on purpose: every `NEXT_PUBLIC_*` value is already visible in
+the client bundle, so none of it is secret, and committing it means a deploy needs
+no dashboard configuration. Override anything locally with `.env.local`, which
+stays git-ignored.
 
 ```bash
 npm run dev
 ```
 
-Until the project id is set the site renders a clean empty state and
+If the project id is ever missing the site renders a clean empty state and
 `/api/ledger` returns a 503 saying so — it does not crash.
 
 ### 4. Import the sample entries (optional)
