@@ -23,11 +23,32 @@ const PULSE_CEILING = 0.16;
 const DEVELOP_SECONDS = 1.15;
 
 /**
- * At fov 30 this puts the box at about 76% of the frame height. Below
- * NARROW_ASPECT the camera pulls back instead, so a tall viewport never crops it.
+ * Pulled in from 5.6 to make the box about 27% larger, so the slot, the ridges on
+ * the apex nub and the step in the base have more raster blocks to land on.
+ *
+ * At fov 30 this fills roughly 86% of the frame height at the resting scale.
+ * Below NARROW_ASPECT the camera pulls back instead, so a tall viewport never
+ * crops it.
  */
-const BASE_CAMERA_DISTANCE = 5.6;
-const NARROW_ASPECT = 1.1;
+const BASE_CAMERA_DISTANCE = 4.4;
+/**
+ * Fallback until the mesh loads and the real figure is measured. The camera only
+ * needs to pull back when the canvas is narrower than the OBJECT is — which for a
+ * money box 1.49 wide and 2.1 tall is about 0.71, not the 1.1 this used to be. That
+ * 1.1 was right for the wider-than-tall placeholder pig it was written for, and
+ * after the swap it was quietly pulling the camera back on almost every layout,
+ * cancelling the framing.
+ */
+const FALLBACK_OBJECT_ASPECT = 0.72;
+/**
+ * Hard ceiling on the rendered scale. The tighter framing means a pulse landing on
+ * top of a high balance would otherwise push the nub and the base past the frame
+ * edge — and those are exactly the details worth seeing. The pulse compresses
+ * against this rather than clipping.
+ */
+const MAX_VISUAL_SCALE = 1.12;
+/** Vertical drift. Small, because the frame no longer has room to spare. */
+const BOB_AMPLITUDE = 0.02;
 
 /**
  * The Hasaleh is a body of revolution, so spinning it about its own axis of
@@ -55,8 +76,11 @@ const SPIN_SPEED = 0.3;
 const COIN_RADIUS = 0.22;
 const COIN_THICKNESS = 0.05;
 const COIN_FALL_SECONDS = 0.6;
-/** Above the visible frame, so the coin falls into view rather than appearing. */
-const COIN_START_HEIGHT = 1.9;
+/**
+ * Above the visible frame, so the coin falls into view rather than appearing. Lower
+ * than before because the tighter framing means less of the fall is on screen.
+ */
+const COIN_START_HEIGHT = 1.55;
 /**
  * How far below the slot the coin settles. It does not fade or shrink — it sinks
  * inside the closed shell, and the depth buffer occludes it. That is both the
@@ -154,6 +178,12 @@ const SHELL_SHADER = /* glsl */ `
     // A tight specular leaves one small blown highlight, like glazed plastic.
     lum += pow(key, 32.0) * 0.38;
 
+    // Expand contrast about the midtones. A shallow feature — the slot, the ridges
+    // on the nub — only shifts the normal slightly, so without this its luminance
+    // difference falls inside a single dither step and disappears. Pushing the
+    // midtones apart buys those features a step or two to show up in.
+    lum = (lum - 0.5) * 1.22 + 0.5;
+
     gl_FragColor = vec4(vec3(clamp(lum, 0.0, 1.0)), 1.0);
   }
 `;
@@ -247,6 +277,25 @@ function readColor(token: string, fallback: string): THREE.Vector3 {
  * rescan stays correct. Returns the highest point still wide enough to be the
  * sphere's shoulder — above that the profile narrows into the apex nub.
  */
+/** Width / height of the mesh, which is the aspect below which width starts to bind. */
+function measureObjectAspect(geometry: THREE.BufferGeometry): number {
+  const position = geometry.getAttribute('position');
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (let i = 0; i < position.count; i++) {
+    const x = position.getX(i);
+    const y = position.getY(i);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  const height = maxY - minY;
+  return height > 0 ? (maxX - minX) / height : FALLBACK_OBJECT_ASPECT;
+}
+
 function findSlotHeight(geometry: THREE.BufferGeometry): number {
   const position = geometry.getAttribute('position');
   let maxRadius = 0;
@@ -363,7 +412,9 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-    camera.position.set(0, 0.34, BASE_CAMERA_DISTANCE);
+    // Centred vertically: the old 0.34 lift left headroom the tighter framing
+    // cannot afford.
+    camera.position.set(0, 0, BASE_CAMERA_DISTANCE);
     camera.lookAt(0, 0, 0);
 
     // Nested so the two rotations cannot interfere: the outer group holds the
@@ -421,6 +472,17 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
     const screenGeometry = new THREE.PlaneGeometry(2, 2);
     screenScene.add(new THREE.Mesh(screenGeometry, ditherMaterial));
 
+    /**
+     * Aspect below which width, rather than height, is what would crop. Measured
+     * from the mesh when it loads.
+     *
+     * Declared here, above `resize`, and not down with the other frame state:
+     * `resize()` closes over it and is called immediately during setup, so a later
+     * `let` leaves it in the temporal dead zone and the whole component throws on
+     * mount. TypeScript does not catch that across the closure.
+     */
+    let objectAspect = FALLBACK_OBJECT_ASPECT;
+
     const resize = () => {
       const width = Math.max(1, Math.floor(host.clientWidth));
       const height = Math.max(1, Math.floor(host.clientHeight));
@@ -436,10 +498,11 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
 
       const aspect = width / height;
       camera.aspect = aspect;
-      // Pull back on tall, narrow viewports so the box never gets cropped.
+      // Only pull back once the canvas is narrower than the object itself, at which
+      // point width rather than height is what would crop.
       camera.position.z =
-        aspect < NARROW_ASPECT
-          ? Math.min(14, BASE_CAMERA_DISTANCE * (NARROW_ASPECT / Math.max(aspect, 0.45)))
+        aspect < objectAspect
+          ? Math.min(14, BASE_CAMERA_DISTANCE * (objectAspect / Math.max(aspect, 0.35)))
           : BASE_CAMERA_DISTANCE;
       camera.updateProjectionMatrix();
     };
@@ -569,11 +632,11 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       }
 
       const base = BASE_SCALE_MIN + BASE_SCALE_SPAN * fillRef.current;
-      tiltGroup.scale.setScalar(base + pulse.offset);
+      tiltGroup.scale.setScalar(Math.min(MAX_VISUAL_SCALE, base + pulse.offset));
 
       if (!reduceMotion) {
         spinGroup.rotation.y += delta * SPIN_SPEED;
-        tiltGroup.position.y = Math.sin(elapsed * 0.75) * 0.045;
+        tiltGroup.position.y = Math.sin(elapsed * 0.75) * BOB_AMPLITUDE;
       } else {
         spinGroup.rotation.y = -0.5;
       }
@@ -615,6 +678,7 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
             Number(v.toFixed(3)),
           ),
           nextAmbientIn: Number((nextAmbientAt - elapsed).toFixed(2)),
+          objectAspect: Number(objectAspect.toFixed(3)),
         }),
         /** Drops a coin on demand, for checking the animation without a Sanity write. */
         dropCoin: () => {
@@ -637,6 +701,9 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
         if (disposed) return;
         geometry = parseMesh(buffer);
         slotHeight = findSlotHeight(geometry);
+        objectAspect = measureObjectAspect(geometry);
+        // Reframe now the real proportions are known.
+        resize();
         spinGroup.add(new THREE.Mesh(geometry, shell));
       })
       .catch((error) => {

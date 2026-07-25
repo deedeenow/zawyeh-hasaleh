@@ -244,6 +244,24 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
 - **Size.** The box scales `0.92`–`1.08` from balance against its all-time peak —
   deliberately subtle — plus a damped ±`0.10` spring pulse when a new transaction
   lands. Constants are at the top of `MoneyBox.tsx`.
+- **Framing.** The camera sits at 4.4, which makes the box about 27% larger than it
+  was and fills ~82% of the frame height at rest — 157 dither blocks tall rather
+  than 124. `MAX_VISUAL_SCALE` caps the rendered scale so a pulse on top of a high
+  balance compresses instead of pushing the nub and the base out of frame.
+  The camera only pulls back once the canvas is narrower than **the object itself**,
+  a figure measured from the mesh (`measureObjectAspect`, ~0.709 here). It used to be
+  a hardcoded 1.1, which was right for the wider-than-tall placeholder model this was
+  first written against and, after the swap, was quietly pulling the camera back on
+  almost every layout.
+- **Fine detail is raster-bound, not mesh-bound.** The coin slot is about 1.4% of the
+  object's height, so even at this size it spans barely two dither blocks — near the
+  floor of what an 8×8 Bayer dither can express. Decimation is *not* the culprit: the
+  shipped mesh carries the same rotational asymmetry as the raw scan (24% radius
+  spread at the shoulder against 25% raw), so the geometry is there. The shader
+  expands contrast about the midtones to buy shallow features an extra step or two.
+  The remaining lever is `--px`: dropping the raster from 3px to 2px would put ~235
+  blocks on the object and ~3.3 on the slot, at the cost of a finer, less chunky
+  texture across the whole page.
 - **Coins.** A coin drops through the slot at random intervals (3.5–9s), each one
   entering from a different offset, tumbling at its own rate, and turning from
   face-on to edge-on as it arrives — which is the only way a coin gets into a slot.
