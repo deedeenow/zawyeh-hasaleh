@@ -1,35 +1,35 @@
 import { formatAmount, formatDate, formatFullDate, MINUS } from '@/lib/format';
+import type { Dictionary } from '@/lib/i18n';
 import type { Entry } from '@/lib/types';
 
 interface LedgerProps {
   entries: Entry[];
-  currency: string;
-  totalInCents: number;
-  totalOutCents: number;
+  totalInMinor: number;
+  totalOutMinor: number;
+  dict: Dictionary;
 }
 
-export default function Ledger({ entries, currency, totalInCents, totalOutCents }: LedgerProps) {
+export default function Ledger({ entries, totalInMinor, totalOutMinor, dict }: LedgerProps) {
   return (
     <section className="rail" aria-labelledby="ledger-heading">
       <header className="rail-head">
         <div className="rail-title">
           <h2 className="eyebrow" id="ledger-heading">
-            The Ledger
+            {dict.ledgerTitle}
           </h2>
-          <span className="masthead-meta figure">
-            {entries.length} {entries.length === 1 ? 'entry' : 'entries'}
-          </span>
+          <span className="rail-count">{dict.entryCount(entries.length)}</span>
         </div>
-        {/* The two heads label the T-account: everything below hangs on one
-            side of the spine or the other. */}
+        {/* The two heads label the T-account: everything below hangs on one side
+            of the spine or the other. In RTL the grid flips, so money in stays on
+            the side you read first. */}
         <div className="rail-columns eyebrow">
           <span>
-            In · {currency}
-            {formatAmount(totalInCents)}
+            {dict.columnIn} ·{' '}
+            <span className="figure num">{formatAmount(totalInMinor)}</span> {dict.currency}
           </span>
           <span>
-            Out · {currency}
-            {formatAmount(totalOutCents)}
+            {dict.columnOut} ·{' '}
+            <span className="figure num">{formatAmount(totalOutMinor)}</span> {dict.currency}
           </span>
         </div>
       </header>
@@ -37,8 +37,8 @@ export default function Ledger({ entries, currency, totalInCents, totalOutCents 
       <div className="rail-scroll">
         {entries.length === 0 ? (
           <div className="entries-empty">
-            <p>Nothing has moved through the hasaleh yet.</p>
-            <p className="muted">The first entry will show up here.</p>
+            <p>{dict.emptyTitle}</p>
+            <p className="muted">{dict.emptyBody}</p>
           </div>
         ) : (
           <ul className="entries">
@@ -54,18 +54,19 @@ export default function Ledger({ entries, currency, totalInCents, totalOutCents 
                   .join(' ')}
               >
                 <div className="entry-cell">
-                  <span className="entry-date figure">
-                    <time dateTime={entry.date} title={formatFullDate(entry.date)}>
+                  <span className="entry-date figure num">
+                    <time dateTime={entry.date} title={formatFullDate(entry.date, dict.locale)}>
                       {formatDate(entry.date)}
                     </time>
                   </span>
-                  <span className="entry-amount figure">
+                  <span className="entry-amount">
                     <span className="sr-only">
-                      {entry.kind === 'in' ? 'Money in, ' : 'Money out, '}
+                      {entry.kind === 'in' ? dict.srMoneyIn : dict.srMoneyOut}
                     </span>
-                    <span aria-hidden="true">{entry.kind === 'in' ? '+' : MINUS}</span>
-                    {currency}
-                    {formatAmount(entry.amountCents)}
+                    <span className="figure num">
+                      <span aria-hidden="true">{entry.kind === 'in' ? '+' : MINUS}</span>
+                      {formatAmount(entry.amountMinor)}
+                    </span>
                   </span>
                   <span className="entry-label">{entry.label}</span>
                   {entry.note ? <span className="entry-note">{entry.note}</span> : null}

@@ -325,12 +325,12 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
     let disposed = false;
     let geometry: THREE.BufferGeometry | null = null;
 
-    const tick = () => {
-      frame = requestAnimationFrame(tick);
-      if (!running) return;
-
-      // Clamped so a backgrounded tab does not resume with one huge step.
-      const delta = Math.min(clock.getDelta(), 0.05);
+    /**
+     * One frame's worth of work, split out from the rAF callback so a fixed
+     * number of frames can be driven by hand. A hidden document never fires
+     * requestAnimationFrame, which otherwise makes this impossible to inspect.
+     */
+    const renderFrame = (delta: number) => {
       elapsed += delta;
 
       // Only start developing once there is something to develop.
@@ -365,7 +365,34 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
       renderer.render(scene, camera);
       renderer.setRenderTarget(null);
       renderer.render(screenScene, screenCamera);
+
     };
+
+    const tick = () => {
+      frame = requestAnimationFrame(tick);
+      if (!running) return;
+      // Clamped so a backgrounded tab does not resume with one huge step.
+      renderFrame(Math.min(clock.getDelta(), 0.05));
+    };
+
+    if (process.env.NODE_ENV !== 'production') {
+      // Dev-only handle for driving frames without rAF, and for reading state.
+      (window as unknown as Record<string, unknown>).__moneyBox = {
+        step: (frames = 90, delta = 1 / 60) => {
+          for (let i = 0; i < frames; i++) renderFrame(delta);
+        },
+        state: () => ({
+          developed,
+          uDevelop: ditherMaterial.uniforms.uDevelop.value,
+          hasGeometry: geometry !== null,
+          spinChildren: spinGroup.children.length,
+          scale: Number(tiltGroup.scale.x.toFixed(3)),
+          cameraZ: Number(camera.position.z.toFixed(2)),
+          raster: [renderTarget.width, renderTarget.height],
+          fill: fillRef.current,
+        }),
+      };
+    }
 
     frame = requestAnimationFrame(tick);
 

@@ -22,9 +22,19 @@
   /* Dithered hairlines. A 1-bit rule cannot be dimmed, only broken up. */
   --rule-h: repeating-linear-gradient(90deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
   --rule-v: repeating-linear-gradient(180deg, var(--paper) 0 var(--px), transparent var(--px) var(--tile));
+  /* 25% — for rules that need to sit back without becoming grey. */
+  --rule-h-faint: repeating-linear-gradient(90deg, var(--paper) 0 var(--px), transparent var(--px) calc(var(--tile) * 2));
 
   --display: Copperplate, "Copperplate Gothic Light", "Engravers MT", "Bodoni 72 Smallcaps", serif;
   --mono: Menlo, Monaco, "SF Mono", "DejaVu Sans Mono", monospace;
+
+  /* PLACEHOLDER — awaiting a chosen Arabic face.
+     Geeza Pro is the plain macOS Arabic workhorse: unremarkable but correctly
+     shaped and legible at 13px. Diwan Kufi was tried here and rejected — it is a
+     decorative display face whose glyphs collide at small sizes.
+     To drop in a real font, see "Swapping the Arabic font" in the README. */
+  --display-ar: "Geeza Pro", "Noto Kufi Arabic", Tahoma, sans-serif;
+  --body-ar: "Geeza Pro", "Noto Naskh Arabic", Tahoma, sans-serif;
 
   --gutter: clamp(1.125rem, 3.2vw, 2.5rem);
   --rail: clamp(19rem, 30vw, 25rem);
@@ -92,13 +102,55 @@ body {
   font-feature-settings: "tnum" 1;
 }
 
+/* Digits, signs and the currency symbol are one LTR run in both languages.
+   Without the isolate, RTL's bidi reordering moves a leading minus to the far
+   side and −515 renders as 515−. inline-block keeps the run intact while leaving
+   text alignment to the block that contains it. */
+.num {
+  direction: ltr;
+  unicode-bidi: isolate;
+  display: inline-block;
+}
+
 .arabic {
-  font-family: "Geeza Pro", "SF Arabic", "Noto Naskh Arabic", serif;
-  font-size: 1.0625rem;
+  font-family: var(--display-ar);
   letter-spacing: 0;
-  /* Holds the Arabic at the same optical weight as the tracked Copperplate
-     beside it, which otherwise dwarfs it. */
   line-height: 1;
+}
+
+/* Arabic is cursive: letter-spacing severs the joins between letters, so every
+   tracked atom has to un-track itself. Same for uppercase, which Arabic has no
+   concept of. */
+.shell:lang(ar) .eyebrow,
+.shell:lang(ar) .readout-last-tag,
+.shell:lang(ar) .link-quiet,
+.shell:lang(ar) .brand,
+.shell:lang(ar) .dialog-close {
+  font-family: var(--display-ar);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.shell:lang(ar) .totals,
+.shell:lang(ar) .readout-last,
+.shell:lang(ar) .entry-date,
+.shell:lang(ar) .rail-count,
+.shell:lang(ar) .muted {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Scoped to .shell, not body: the document element stays lang="ar" so the English
+   route can override on its own wrapper without this leaking in. */
+.shell:lang(ar) {
+  font-family: var(--body-ar);
+}
+
+/* Figures stay Menlo in both languages. The tabular digits are a signature of the
+   design, and no Arabic face here has monospaced numerals. */
+.shell:lang(ar) .figure,
+.shell:lang(ar) .balance {
+  font-family: var(--mono);
 }
 
 /* --- shell --------------------------------------------------------------- */
@@ -134,21 +186,60 @@ body {
   gap: 0.7rem;
 }
 
-.masthead-meta {
+.wordmark {
+  font-family: var(--display-ar);
+  font-size: 1.375rem;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.brand {
+  font-family: var(--display);
+  font-size: 0.625rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.brand.arabic {
+  font-size: 0.8125rem;
+}
+
+.masthead-nav {
+  display: flex;
+  align-items: baseline;
+  gap: 1.1rem;
+}
+
+/* One control style for both the About button and the language link, so they read
+   as siblings rather than as a button next to a link. */
+.link-quiet {
+  font-family: var(--display);
+  font-size: 0.625rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  line-height: 1;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  padding: 0 0 2px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.link-quiet:hover {
+  border-bottom-color: var(--paper);
+}
+
+.link-quiet.arabic {
+  font-size: 0.875rem;
+}
+
+.rail-count {
   font-size: 0.625rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  opacity: 1;
-}
-
-.masthead-link {
-  color: inherit;
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-}
-
-.masthead-link:hover {
-  border-bottom-color: var(--paper);
 }
 
 .body {
@@ -201,12 +292,6 @@ body {
 .readout {
   display: grid;
   gap: 0.55rem;
-}
-
-.readout-label {
-  display: flex;
-  align-items: baseline;
-  gap: 0.6rem;
 }
 
 .balance {
@@ -269,7 +354,7 @@ body {
   content: "";
   position: absolute;
   inset-block: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 1px;
   background-image: var(--rule-v);
   z-index: 2;
@@ -303,7 +388,7 @@ body {
 }
 
 .rail-columns span:last-child {
-  text-align: right;
+  text-align: end;
 }
 
 .rail-scroll {
@@ -352,8 +437,9 @@ body {
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background-image: var(--rule-h);
-  opacity: 0.65;
+  /* A sparser dither rather than opacity: 0.65 on white would anti-alias to a
+     real grey, which is the one thing this design does not allow. */
+  background-image: var(--rule-h-faint);
 }
 
 .entry-cell {
@@ -361,15 +447,17 @@ body {
   min-width: 0;
 }
 
+/* grid-column 1 is the side you read first — the right in RTL, the left in LTR —
+   so money in stays "first" in both directions without a second rule. */
 .entry-in .entry-cell {
   grid-column: 1;
-  padding-left: var(--gutter);
+  padding-inline-start: var(--gutter);
 }
 
 .entry-out .entry-cell {
   grid-column: 2;
-  padding-right: var(--gutter);
-  text-align: right;
+  padding-inline-end: var(--gutter);
+  text-align: end;
 }
 
 .entry-date {
@@ -446,6 +534,89 @@ body {
   clip: rect(0 0 0 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* --- about dialog -------------------------------------------------------- */
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  /* A translucent black would render as grey. A 50% checkerboard of pure ink
+     half-erases the page instead — dimming it without leaving 1-bit. */
+  background-image: conic-gradient(
+    var(--ink) 0 25%,
+    transparent 0 50%,
+    var(--ink) 0 75%,
+    transparent 0
+  );
+  background-size: var(--tile) var(--tile);
+}
+
+.dialog {
+  position: relative;
+  width: min(54ch, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  background: var(--ink);
+  border: 1px solid var(--paper);
+}
+
+.dialog-head {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem var(--gutter);
+  background: var(--ink);
+}
+
+.dialog-head::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--paper);
+}
+
+/* The only inverted control on the page, so there is no doubt what closes this. */
+.dialog-close {
+  font-family: var(--display);
+  font-size: 0.5625rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--paper);
+  border-radius: 0;
+  padding: 0.3rem 0.6rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.dialog-close:hover {
+  background-image: var(--d75);
+  background-size: var(--tile) var(--tile);
+}
+
+.dialog-close:lang(ar) {
+  font-size: 0.8125rem;
+}
+
+.dialog-body {
+  display: grid;
+  gap: 0.9rem;
+  padding: 1.1rem var(--gutter) 1.4rem;
+}
+
+.dialog-body p {
+  max-width: 46ch;
 }
 
 /* --- narrow screens ------------------------------------------------------ */

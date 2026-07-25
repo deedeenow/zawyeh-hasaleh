@@ -3,16 +3,22 @@
 import { useEffect, useState } from 'react';
 import MoneyBox from './MoneyBox';
 import Ledger from './Ledger';
+import About from './About';
 import { formatAmount, formatBalance, formatDate } from '@/lib/format';
+import { getDictionary, type Locale } from '@/lib/i18n';
 import type { LedgerView } from '@/lib/types';
 
 const POLL_INTERVAL_MS = 20_000;
 
-/** Entries are recorded in Sanity Studio, so the link leaves the site entirely. */
-const studioUrl = process.env.NEXT_PUBLIC_STUDIO_URL ?? '';
-
-export default function Bank({ initial }: { initial: LedgerView }) {
+/**
+ * Only serialisable props may cross the server/client boundary, so the page hands
+ * over a locale string and the dictionary — which carries functions for Arabic
+ * pluralisation — is built here, on the client side of that line.
+ */
+export default function Bank({ initial, locale }: { initial: LedgerView; locale: Locale }) {
+  const dict = getDictionary(locale);
   const [ledger, setLedger] = useState(initial);
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   // The page is public and read-only, so polling is enough to pick up whatever
   // was published in the Studio without anyone reloading.
@@ -44,24 +50,28 @@ export default function Bank({ initial }: { initial: LedgerView }) {
   const { latest } = ledger;
 
   return (
-    <div className="shell">
+    <div className="shell" dir={dict.dir} lang={dict.locale}>
       <header className="masthead">
         <div className="masthead-mark">
-          <span className="eyebrow">Zawyeh</span>
-          <span className="arabic" lang="ar" dir="rtl">
-            حصالة
+          <span className="wordmark arabic" lang="ar" dir="rtl">
+            {dict.wordmark}
           </span>
+          <span className={dict.locale === 'ar' ? 'brand arabic' : 'brand'}>{dict.brand}</span>
         </div>
-        {studioUrl ? (
+
+        <nav className="masthead-nav">
+          <button className="link-quiet" type="button" onClick={() => setAboutOpen(true)}>
+            {dict.about}
+          </button>
+          {/* The alternate language is always named in its own language. */}
           <a
-            className="masthead-meta masthead-link"
-            href={studioUrl}
-            target="_blank"
-            rel="noreferrer"
+            className={dict.locale === 'ar' ? 'link-quiet' : 'link-quiet arabic'}
+            href={dict.altHref}
+            lang={dict.locale === 'ar' ? 'en' : 'ar'}
           >
-            Record an entry
+            {dict.altLabel}
           </a>
-        ) : null}
+        </nav>
       </header>
 
       <div className="body">
@@ -73,43 +83,41 @@ export default function Bank({ initial }: { initial: LedgerView }) {
           />
 
           <div className="readout">
-            <div className="readout-label">
-              <h1 className="eyebrow" id="balance-heading">
-                In the hasaleh
-              </h1>
-            </div>
+            <h1 className="eyebrow" id="balance-heading">
+              {dict.balanceLabel}
+            </h1>
 
             <p className="balance">
-              <span className="balance-currency">{ledger.currency}</span>
-              {formatBalance(ledger.balanceCents)}
+              <span className="figure num">{formatBalance(ledger.balanceMinor)}</span>
+              <span className="balance-currency">{dict.currency}</span>
             </p>
 
             {latest ? (
               <p className="readout-last">
                 <span className="readout-last-tag">
-                  {latest.kind === 'in' ? 'Last in' : 'Last out'}
+                  {latest.kind === 'in' ? dict.lastIn : dict.lastOut}
                 </span>
-                <span className="figure">
-                  {ledger.currency}
-                  {formatAmount(latest.amountCents)}
-                </span>
+                <span className="figure num">{formatAmount(latest.amountMinor)}</span>
+                <span>{dict.currency}</span>
                 <span>{latest.label}</span>
-                <span className="figure">{formatDate(latest.date)}</span>
+                <span className="figure num">{formatDate(latest.date)}</span>
               </p>
             ) : (
               <p className="readout-last">
-                <span>Empty. Nothing in, nothing out.</span>
+                <span>{dict.emptyReadout}</span>
               </p>
             )}
 
-            <p className="totals figure">
+            <p className="totals">
               <span>
-                In {ledger.currency}
-                {formatAmount(ledger.totalInCents)}
+                {dict.totalIn}{' '}
+                <span className="figure num">{formatAmount(ledger.totalInMinor)}</span>{' '}
+                {dict.currency}
               </span>
               <span>
-                Out {ledger.currency}
-                {formatAmount(ledger.totalOutCents)}
+                {dict.totalOut}{' '}
+                <span className="figure num">{formatAmount(ledger.totalOutMinor)}</span>{' '}
+                {dict.currency}
               </span>
             </p>
           </div>
@@ -117,11 +125,13 @@ export default function Bank({ initial }: { initial: LedgerView }) {
 
         <Ledger
           entries={ledger.entries}
-          currency={ledger.currency}
-          totalInCents={ledger.totalInCents}
-          totalOutCents={ledger.totalOutCents}
+          totalInMinor={ledger.totalInMinor}
+          totalOutMinor={ledger.totalOutMinor}
+          dict={dict}
         />
       </div>
+
+      <About dict={dict} open={aboutOpen} onClose={() => setAboutOpen(false)} />
     </div>
   );
 }

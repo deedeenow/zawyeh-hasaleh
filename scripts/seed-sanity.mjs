@@ -42,7 +42,7 @@ const entries = Array.isArray(file.entries) ? file.entries : [];
 const documents = entries.map((entry) => ({
   _type: 'ledgerEntry',
   kind: entry.kind,
-  amount: entry.amountCents / 100,
+  amount: entry.amountMinor / 100,
   label: entry.label,
   date: entry.date,
   ...(entry.note ? { note: entry.note } : {}),

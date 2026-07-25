@@ -147,6 +147,60 @@ Two things worth knowing:
 - **Scan winding is inconsistent** in places, so the shader flips each normal back
   toward the camera rather than trusting face orientation. Hence `DoubleSide`.
 
+## Languages
+
+Arabic is the **primary** language and English the alternate, and that ordering is
+structural rather than cosmetic:
+
+| | |
+| --- | --- |
+| `/` | Arabic, RTL |
+| `/en` | English, LTR |
+
+- RTL is the base layout in `globals.css`; LTR is the override. Retrofitting RTL
+  onto an LTR design is the expensive direction, so it was built the other way.
+- **The T-account mirrors.** `grid-column: 1` is the side you read first — the
+  right in RTL, the left in LTR — so money in stays "first" in both without a
+  second rule.
+- **Arabic never gets letter-spacing.** It is cursive; tracking severs the joins
+  between letters. Every tracked atom un-tracks itself under
+  `.shell:lang(ar)`.
+- Those selectors are anchored to `.shell`, **not** bare `:lang(ar)`. The document
+  element is `lang="ar"`, so an unanchored `:lang(ar) .eyebrow` also matches on the
+  English route — which silently applied an Arabic font to Latin text and, because
+  font fallback is per-glyph, ate the word spaces.
+- **Figures stay Menlo in both languages**, wrapped in `.num`
+  (`direction: ltr; unicode-bidi: isolate`). Without the isolate, RTL's bidi
+  reordering moves a leading minus to the far side and `−515` renders as `515−`.
+- Entry text is shown exactly as typed in the Studio — it is not translated.
+  Bilingual entries would need `label_ar` / `label_en` on the schema.
+
+### Swapping the Arabic font
+
+The Arabic faces in `--display-ar` / `--body-ar` are a **placeholder** (Geeza Pro —
+plain but correctly shaped). Diwan Kufi was tried and rejected: it is decorative
+and its glyphs collide at 13px. Drop a file into `app/fonts/` and see the README
+there; wiring it via `next/font/local` is a three-line change.
+
+## Money
+
+The currency is the **Jordanian dinar**, which divides into **1000 fils, not 100**.
+So amounts carry up to three decimals (`12.500`), and the app's integer minor unit
+is a fils. All of that lives in one place — `lib/currency.ts`.
+
+- Sanity stores `amount` in **major units** (an editor types `12.5`, meaning twelve
+  and a half dinars). The conversion to integer minor units happens once, in
+  `coerceEntry`. That is why moving from cents to fils needed no data migration.
+- `GET /api/ledger` publishes `currency: "JOD"`, `minorPerMajor` and `decimals`, so
+  any consumer — the larger Zawyeh site included — can format the figures without
+  guessing.
+- The display form is per-language: `JOD` in English, `د.أ` in Arabic, from the
+  dictionary. The ISO code stays in the API.
+- Ledger rows show sign and figure only. The currency is stated by the column heads
+  and the balance; repeating it on every row is noise.
+- To switch to a cent currency, set `minorPerMajor: 100` / `decimals: 2` in
+  `lib/currency.ts` and loosen the `amount` validator on the Sanity schema.
+
 ## How the design works
 
 - **Two colours.** `#000` and `#fff`, no accent. Emphasis is inversion, never hue.
@@ -166,6 +220,9 @@ Two things worth knowing:
 - **Load.** The dither threshold ramps from 1, so the image develops in over
   ~1.15s. That is the only entrance animation; `prefers-reduced-motion` skips it
   along with the rotation and the bob.
+- **The About dialog dims with a checkerboard, not a translucent black** — which
+  would render as grey. A 50% scrim of pure ink half-erases the page instead,
+  dimming it without leaving 1-bit.
 
 ## Structure
 
@@ -174,13 +231,18 @@ app/
   page.tsx                 reads the ledger, renders the bank
   layout.tsx               metadata, loads globals.css
   globals.css              all design tokens and layout
+  page.tsx                 Arabic, RTL
+  en/page.tsx              English, LTR
   components/
     Bank.tsx               client shell, polls for new entries
     MoneyBox.tsx           loads the scan + Bayer dither post-pass
     Ledger.tsx             the T-account rail
+    About.tsx              modal, focus-trapped
   api/
     ledger/route.ts        GET, public and CORS-open
 lib/
+  i18n.ts                  ar/en dictionaries, direction, Arabic plurals
+  currency.ts              JOD, 1000 fils, 3 decimals — one source of truth
   sanity.ts                read-only client, no token
   ledger.ts                GROQ query + the balance derivation
   types.ts                 shapes shared with client components

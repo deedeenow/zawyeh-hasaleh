@@ -11,7 +11,7 @@ export interface Entry {
   date: string;
   kind: EntryKind;
   /** Always positive. Minor units (cents/fils) so no floating-point money. */
-  amountCents: number;
+  amountMinor: number;
   label: string;
   note?: string;
 }
@@ -22,14 +22,20 @@ export interface LedgerFile {
 }
 
 export interface LedgerView {
+  /** ISO 4217 code, e.g. "JOD". Locale-neutral — the UI picks a display form. */
   currency: string;
+  /** Integer minor units per major unit: 1000 fils to the dinar, 100 to a cent
+   *  currency. Published so any consumer can format the figures correctly. */
+  minorPerMajor: number;
+  /** Decimal places to show for a fractional amount. */
+  decimals: number;
   /** Newest first — the order the ledger column renders in. */
   entries: Entry[];
-  balanceCents: number;
-  totalInCents: number;
-  totalOutCents: number;
+  balanceMinor: number;
+  totalInMinor: number;
+  totalOutMinor: number;
   /** Highest the balance has ever been, chronologically. Drives the size mapping. */
-  peakCents: number;
+  peakMinor: number;
   /** 0–1, balance against the all-time peak. */
   fill: number;
   latest: Entry | null;

@@ -1,5 +1,6 @@
 import type { Entry, EntryKind, LedgerView } from './types';
 import { getSanityClient } from './sanity';
+import { CURRENCY } from './currency';
 
 export type { Entry, EntryKind, LedgerView };
 
@@ -48,9 +49,9 @@ function coerceEntry(raw: RawEntry): Entry | null {
   if (!Number.isFinite(amount) || amount <= 0) return null;
 
   // Round, never truncate: 8.29 * 100 is 828.9999999999999 in binary floating
-  // point, and truncating it would quietly lose a cent.
-  const amountCents = Math.round(amount * 100);
-  if (amountCents <= 0) return null;
+  // point, and truncating it would quietly lose a minor unit.
+  const amountMinor = Math.round(amount * CURRENCY.minorPerMajor);
+  if (amountMinor <= 0) return null;
 
   const parsed = new Date(raw.date ?? '');
   if (Number.isNaN(parsed.getTime())) return null;
@@ -59,7 +60,7 @@ function coerceEntry(raw: RawEntry): Entry | null {
     id: raw.id,
     date: parsed.toISOString(),
     kind: raw.kind,
-    amountCents,
+    amountMinor,
     label: raw.label.trim().slice(0, MAX_LABEL_LENGTH),
     note:
       typeof raw.note === 'string' && raw.note.trim() !== ''
@@ -69,12 +70,14 @@ function coerceEntry(raw: RawEntry): Entry | null {
 }
 
 export const EMPTY_LEDGER: LedgerView = {
-  currency: process.env.NEXT_PUBLIC_CURRENCY ?? '$',
+  currency: CURRENCY.code,
+  minorPerMajor: CURRENCY.minorPerMajor,
+  decimals: CURRENCY.decimals,
   entries: [],
-  balanceCents: 0,
-  totalInCents: 0,
-  totalOutCents: 0,
-  peakCents: 0,
+  balanceMinor: 0,
+  totalInMinor: 0,
+  totalOutMinor: 0,
+  peakMinor: 0,
   fill: 0,
   latest: null,
 };
@@ -89,32 +92,34 @@ export function view(entries: Entry[]): LedgerView {
     (a, b) => Date.parse(a.date) - Date.parse(b.date) || a.id.localeCompare(b.id),
   );
 
-  let balanceCents = 0;
-  let totalInCents = 0;
-  let totalOutCents = 0;
-  let peakCents = 0;
+  let balanceMinor = 0;
+  let totalInMinor = 0;
+  let totalOutMinor = 0;
+  let peakMinor = 0;
 
   for (const entry of chronological) {
     if (entry.kind === 'in') {
-      balanceCents += entry.amountCents;
-      totalInCents += entry.amountCents;
+      balanceMinor += entry.amountMinor;
+      totalInMinor += entry.amountMinor;
     } else {
-      balanceCents -= entry.amountCents;
-      totalOutCents += entry.amountCents;
+      balanceMinor -= entry.amountMinor;
+      totalOutMinor += entry.amountMinor;
     }
-    if (balanceCents > peakCents) peakCents = balanceCents;
+    if (balanceMinor > peakMinor) peakMinor = balanceMinor;
   }
 
   const newestFirst = [...chronological].reverse();
-  const fill = peakCents > 0 ? Math.min(1, Math.max(0, balanceCents / peakCents)) : 0;
+  const fill = peakMinor > 0 ? Math.min(1, Math.max(0, balanceMinor / peakMinor)) : 0;
 
   return {
-    currency: EMPTY_LEDGER.currency,
+    currency: CURRENCY.code,
+    minorPerMajor: CURRENCY.minorPerMajor,
+    decimals: CURRENCY.decimals,
     entries: newestFirst,
-    balanceCents,
-    totalInCents,
-    totalOutCents,
-    peakCents,
+    balanceMinor,
+    totalInMinor,
+    totalOutMinor,
+    peakMinor,
     fill,
     latest: newestFirst[0] ?? null,
   };
