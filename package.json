@@ -10,7 +10,8 @@
     "start": "next start",
     "model": "node scripts/prepare-model.mjs && node scripts/make-favicon.mjs",
     "seed": "node scripts/seed-sanity.mjs",
-    "favicon": "node scripts/make-favicon.mjs"
+    "favicon": "node scripts/make-favicon.mjs",
+    "obj": "node scripts/mesh-to-obj.mjs"
   },
   "dependencies": {
     "@sanity/client": "^7.25.0",

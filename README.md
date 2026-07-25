@@ -133,7 +133,21 @@ to 2.1 units tall, recomputes smooth normals, and writes `public/hasaleh.mesh` �
 585 KB, about 500 KB gzipped, 2.7% of the source. Indices are 16-bit whenever the
 vertex count fits in 65535, which it does here; that is exactly lossless.
 
-Re-run it after a rescan. The OBJ stays the source of truth. To trade file size
+Re-run it after a rescan. The OBJ stays the source of truth.
+
+### Getting the processed model back out
+
+`public/hasaleh.mesh` is a custom binary only this app reads. To get the cleaned-up
+model into something Blender, Rhino, C4D or a slicer can open:
+
+```bash
+npm run obj
+```
+
+That writes `hasaleh media/hasaleh-processed.obj` — 33,460 triangles against the raw
+scan's 265k and about a tenth the size, with the 2.31° lean straightened, centred on
+the origin, scaled to 2.1 units tall, and smooth normals recomputed. No UVs, because
+the scan has none. To trade file size
 against detail, change `CLUSTER_RESOLUTION` in `scripts/prepare-model.mjs` —
 triangle count scales with its square.
 
