@@ -8,8 +8,17 @@ export const metadata: Metadata = {
   description: 'ما في حصالة زاوية، ومن أين جاء كل مبلغ وإلى أين ذهب.',
 };
 
+/**
+ * The one place a palette value has to be restated. Next resolves viewport metadata
+ * on the server, before any stylesheet exists, so it cannot read --ground the way
+ * MoneyBox.tsx and scripts/make-favicon.mjs both do.
+ *
+ * KEEP IN SYNC WITH --ground IN app/globals.css. If the paper changes and this does
+ * not, mobile browsers tint their chrome the old colour and the seam shows at the
+ * top of the page.
+ */
 export const viewport: Viewport = {
-  themeColor: '#ffffff',
+  themeColor: '#f3ece1',
   colorScheme: 'light',
 };
 

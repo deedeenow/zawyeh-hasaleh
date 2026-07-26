@@ -1,24 +1,31 @@
 /**
- * Derives the favicon from the actual scan.
+ * Draws the favicon: the حص mark struck on a coin.
  *
  *   node scripts/make-favicon.mjs
  *
- * The Hasaleh is a body of revolution about Y, which means its silhouette is
- * fully determined by the maximum radius at each height. So rather than drawing an
- * approximation by hand, this reads public/hasaleh.mesh, measures r(y), and emits
- * the exact profile mirrored about the axis as app/icon.svg.
+ * Two revisions got here. It began as the money box itself, traced from the scan's
+ * own silhouette — accurate, and at the 16px a favicon is actually shown at,
+ * unreadable: a hollow ovoid with a nub, which is a lamp or a vase or nothing. It
+ * became a plain milled coin, which reads at every size but says nothing about
+ * Hasaleh in particular. This is both: the coin carries the shape, and the drawn
+ * mark from `hasaleh media/hasaleh favicon.png` carries the identity.
  *
- * Re-run after `npm run model`.
+ * One path, `fill-rule: evenodd`, so the coin and the mark punched out of it are a
+ * single silhouette that works on any background — which a favicon has to, because
+ * it sits in browser chrome and cannot assume the paper behind it.
+ *
+ * Colour comes out of app/globals.css rather than being restated here.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { traceBitmap, loopsToPath } from './lib/trace-bitmap.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '..');
-const MESH = path.join(ROOT, 'public', 'hasaleh.mesh');
 const CSS = path.join(ROOT, 'app', 'globals.css');
+const SOURCE = path.resolve(ROOT, '..', 'hasaleh media', 'hasaleh favicon.png');
 const OUTPUT = path.join(ROOT, 'app', 'icon.svg');
 
 /**
@@ -36,117 +43,104 @@ function token(name) {
 const MARK = token('mark');
 const MARK_ON_DARK = token('mark-on-dark');
 
-/**
- * Height bands. Fewer than the mesh could give: a favicon lives at 16-32px, where
- * extra profile detail turns into noise rather than shape.
- */
-const BANDS = 26;
-/** SVG viewBox is square; the profile is fitted into this with a margin. */
+/** SVG viewBox, square. */
 const BOX = 32;
-const MARGIN = 1.5;
+const CENTRE = BOX / 2;
+
+/** Outer radius, leaving a hair of margin so the milling is not clipped. */
+const RADIUS = 15;
 /**
- * Deliberately heavy. At 16px a 2.1 stroke renders about one device pixel and the
- * outline all but vanishes; this reads at every size a favicon is actually shown.
+ * Milled edge — the reeding round the rim of a struck coin, and the one cue that
+ * separates a coin from a dot without spending any interior detail on it.
+ *
+ * Shallow and frequent, which took some finding. The first attempt used 14 reeds
+ * 1.5 deep, and at any size the notches read as gear teeth: a cog, not a coin.
+ * Below about a unit of depth they stop being teeth and become milling. At 16px the
+ * reeds fall under a device pixel each and average back into a slightly soft edge,
+ * which is the correct failure — it degrades to a plain disc rather than to a
+ * sprocket.
  */
-const STROKE = 3;
-/** Passes of neighbour averaging, to take the scan's jitter out of the outline. */
-const SMOOTHING_PASSES = 2;
+const REEDS = 24;
+const REED_DEPTH = 0.8;
+/** Fraction of each reed's period that is cut away. */
+const REED_DUTY = 0.5;
+/** Points along each uncut arc. Enough that the rim between notches stays round. */
+const ARC_STEPS = 4;
 
-function readMesh(file) {
-  const buffer = fs.readFileSync(file);
-  const magic = buffer.toString('ascii', 0, 4);
-  if (magic !== 'HSLH') throw new Error('not a Hasaleh mesh');
-  const version = buffer.readUInt32LE(4);
-  if (version !== 2) throw new Error(`unsupported mesh version ${version}`);
-  const vertexCount = buffer.readUInt32LE(8);
+/**
+ * Width of the struck mark, in viewBox units.
+ *
+ * The drawing is about 1.67 times wider than it is tall, so width is what binds. At
+ * 24 it reaches past the notch floor and eats into the milling, which reads as a
+ * broken rim rather than a struck face. 22 leaves a little over 3 units of clearance
+ * inside the reeding, and that is the constraint — not the look of the mark itself.
+ */
+const MARK_WIDTH = 22;
+/**
+ * Simplification tolerance for the mark, in viewBox units — so it is stated in terms
+ * of the size the thing is actually drawn at. 0.16 of 32 units is about a twelfth of
+ * a device pixel at 16px, and it takes the trace from 2612 points to 48.
+ */
+const MARK_TOLERANCE = 0.16;
 
-  // Copy out, because the Buffer's byteOffset is not guaranteed 4-byte aligned.
-  const positions = new Float32Array(vertexCount * 3);
-  for (let i = 0; i < positions.length; i++) {
-    positions[i] = buffer.readFloatLE(64 + i * 4);
+const point = (angle, radius) =>
+  `${(CENTRE + Math.cos(angle) * radius).toFixed(2)} ${(CENTRE + Math.sin(angle) * radius).toFixed(2)}`;
+
+/** The milled rim, walked as one closed polygon: arc, notch, arc, notch. */
+function milledRim() {
+  const period = (Math.PI * 2) / REEDS;
+  const cut = period * REED_DUTY;
+  const flat = period - cut;
+  const points = [];
+
+  for (let reed = 0; reed < REEDS; reed++) {
+    const start = reed * period;
+    for (let step = 0; step <= ARC_STEPS; step++) {
+      points.push(point(start + (flat * step) / ARC_STEPS, RADIUS));
+    }
+    // Straight in, across the notch floor, and straight back out.
+    points.push(point(start + flat, RADIUS - REED_DEPTH));
+    points.push(point(start + flat + cut, RADIUS - REED_DEPTH));
   }
-  return positions;
+
+  return `M${points.join('L')}Z`;
 }
 
-const positions = readMesh(MESH);
+const traced = await traceBitmap(SOURCE, { minLoopArea: 20 });
+const mark = loopsToPath(traced.loops, traced.bbox, {
+  targetWidth: MARK_WIDTH,
+  centre: [CENTRE, CENTRE],
+  tolerance: MARK_TOLERANCE,
+  precision: 2,
+});
 
-let yMin = Infinity;
-let yMax = -Infinity;
-for (let i = 1; i < positions.length; i += 3) {
-  if (positions[i] < yMin) yMin = positions[i];
-  if (positions[i] > yMax) yMax = positions[i];
-}
-
-// Maximum radius from the Y axis within each height band.
-const radii = new Array(BANDS).fill(0);
-for (let i = 0; i < positions.length; i += 3) {
-  const x = positions[i];
-  const y = positions[i + 1];
-  const z = positions[i + 2];
-  let band = Math.floor(((y - yMin) / (yMax - yMin)) * BANDS);
-  if (band >= BANDS) band = BANDS - 1;
-  const r = Math.hypot(x, z);
-  if (r > radii[band]) radii[band] = r;
-}
-
-// Scan noise can leave a band short; lift any band below both neighbours.
-for (let i = 1; i < BANDS - 1; i++) {
-  const floor = Math.min(radii[i - 1], radii[i + 1]);
-  if (radii[i] < floor * 0.82) radii[i] = floor * 0.82;
-}
-
-// Then soften the polyline. The silhouette of a turned object is smooth; the
-// jitter left in it is measurement error, and it reads as fuzz at small sizes.
-for (let pass = 0; pass < SMOOTHING_PASSES; pass++) {
-  const copy = [...radii];
-  for (let i = 1; i < BANDS - 1; i++) {
-    radii[i] = (copy[i - 1] + copy[i] * 2 + copy[i + 1]) / 4;
-  }
-}
-
-const maxRadius = Math.max(...radii);
-const inner = BOX - MARGIN * 2;
-// One scale for both axes, so the icon keeps the object's real proportions.
-const scale = Math.min(inner / (maxRadius * 2), inner / (yMax - yMin));
-const cx = BOX / 2;
-const height = (yMax - yMin) * scale;
-const top = (BOX - height) / 2;
-
-const px = (r) => cx + r * scale;
-const py = (band) => top + height - ((band + 0.5) / BANDS) * height;
-
-// Up the right-hand profile, then back down the mirrored left-hand side.
-const right = radii.map((r, i) => `${px(r).toFixed(2)} ${py(i).toFixed(2)}`);
-const left = radii
-  .map((r, i) => `${px(-r).toFixed(2)} ${py(i).toFixed(2)}`)
-  .reverse();
-
-const d = `M ${right[0]} L ${right.slice(1).join(' L ')} L ${left.join(' L ')} Z`;
+// Disc first, mark second. Under evenodd the mark's outer contours land inside the
+// disc and so become holes, and any counter inside them flips back to ink — which is
+// exactly how a struck letter behaves.
+const d = `${milledRim()}${mark.d}`;
 
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${BOX} ${BOX}">
-  <!-- Generated by scripts/make-favicon.mjs from public/hasaleh.mesh.
-       The outline is the scan's own profile, measured as max radius per height
-       band and mirrored about the axis of revolution. Do not hand-edit. -->
+  <!-- Generated by scripts/make-favicon.mjs: a milled coin with the drawn حص mark
+       from "hasaleh media/hasaleh favicon.png" struck out of it with evenodd.
+       Do not hand-edit. -->
   <style>
-    /* A favicon sits in browser chrome, not on the page, so it cannot assume a
-       white ground. The brand colour disappears against a dark toolbar, so a
-       lighter tint takes over there. Both come from globals.css. */
-    .hasaleh { stroke: ${MARK}; }
+    /* A favicon sits in browser chrome, not on the page, so it cannot assume the
+       paper behind it. The ink disappears against a dark toolbar, so a lighter tint
+       takes over there. Both come from globals.css. */
+    .coin { fill: ${MARK}; }
     @media (prefers-color-scheme: dark) {
-      .hasaleh { stroke: ${MARK_ON_DARK}; }
+      .coin { fill: ${MARK_ON_DARK}; }
     }
   </style>
-  <path
-    class="hasaleh"
-    d="${d}"
-    fill="none"
-    stroke="${MARK}"
-    stroke-width="${STROKE}"
-    stroke-linejoin="round"
-  />
+  <title>حصالة</title>
+  <path class="coin" fill="${MARK}" fill-rule="evenodd" d="${d}"/>
 </svg>
 `;
 
 fs.writeFileSync(OUTPUT, svg);
-console.log(`profile: ${BANDS} bands, max radius ${maxRadius.toFixed(3)}, height ${(yMax - yMin).toFixed(3)}`);
-console.log(`wrote app/icon.svg  ${svg.length} bytes  (stroke ${MARK}, dark ${MARK_ON_DARK})`);
+console.log(`coin: r${RADIUS}, ${REEDS} reeds ${REED_DEPTH} deep`);
+console.log(
+  `mark: ${traced.loops.length} loops, ${traced.tracedPoints} points -> ${mark.points}, ` +
+    `${MARK_WIDTH}x${mark.height.toFixed(1)} units`,
+);
+console.log(`wrote app/icon.svg  ${svg.length} bytes  (fill ${MARK}, dark ${MARK_ON_DARK})`);

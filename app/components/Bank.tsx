@@ -53,9 +53,10 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
     <div className="shell" dir={dict.dir} lang={dict.locale}>
       <header className="masthead">
         <div className="masthead-mark">
-          <span className="wordmark arabic" lang="ar" dir="rtl">
-            {dict.wordmark}
-          </span>
+          {/* The drawn wordmark, masked in from public/wordmark.svg — see .wordmark in
+              globals.css. Deliberately childless: the word is the accessible name, not
+              a text node, because anything inside would be masked along with it. */}
+          <span className="wordmark" role="img" aria-label={dict.wordmark} lang="ar" />
           <span className={dict.locale === 'ar' ? 'brand arabic' : 'brand'}>{dict.brand}</span>
         </div>
 

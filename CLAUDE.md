@@ -27,14 +27,17 @@ runtime traps listed under Gotchas.
 Asset pipeline (run from the repo root, all idempotent):
 
 ```bash
-npm run model        # OBJ -> public/hasaleh.mesh, then regenerates the favicon
-npm run favicon      # mesh -> app/icon.svg (silhouette outline)
+npm run model        # OBJ -> public/hasaleh.mesh
+npm run favicon      # draws the coin in app/icon.svg; reads the palette from globals.css
+npm run wordmark     # logo PNG -> traced public/wordmark.svg
 npm run obj          # mesh -> "hasaleh media/hasaleh-processed.obj" for Blender etc.
 npm run seed         # one-off import of data/seed-entries.json; needs SANITY_WRITE_TOKEN
 ```
 
-The source scan lives **outside this repo** at `../hasaleh media/hasaleh scan.obj`
-(22 MB). `public/hasaleh.mesh` is generated and committed so deploys don't need it.
+The source art lives **outside this repo** in `../hasaleh media/` — `hasaleh scan.obj`
+(22 MB) and `hasaleh logo.png`. Their outputs (`public/hasaleh.mesh`,
+`public/wordmark.svg`, `app/icon.svg`) are generated and committed, so a deploy never
+needs that folder.
 
 ## Data flow
 
@@ -80,20 +83,71 @@ Arabic is primary at `/`, English alternate at `/en`. RTL is the **base** layout
 - The Arabic display faces in `--display-ar` / `--body-ar` are a **placeholder** pending
   a chosen font. See `app/fonts/README.md`.
 
-## The 1-bit design system
+## The design system — three inks from a ledger book
 
-Two colours and nothing else. `--ground` is the paper, `--mark` is everything drawn on it.
+Modelled on a دفتر الديوان. Cream paper, blue-black ink, and a red column grid that
+the press put down before anyone wrote a figure on it.
 
-**`--ground` and `--mark` in `app/globals.css` are the single source of truth.**
-`app/components/MoneyBox.tsx` reads them at runtime; `scripts/make-favicon.mjs` parses them out of the
-stylesheet at generation time. Never restate a colour anywhere else — it was hardcoded in
-three places once and silently kept the old value through a palette change, and the
-favicon stopped matching the site.
+- `--ground` `#f3ece1` — the paper.
+- `--mark` `#1a3a6b` — anything a hand puts on it. All text, all figures, the object.
+- `--rule` `#b0453c` — anything that frames rather than states. Every rule, the
+  T-account spine, the dialog border.
+
+**The invariant that makes three colours read as two: nothing written is ever red,
+and no rule is ever ink.** Emphasis is still inversion, never hue — the newest entry
+is an ink block, not a red one. If you find yourself wanting red for emphasis or ink
+for a border, the answer is no.
+
+Verticals are solid (`--rule-v`), horizontals are dithered (`--rule-h`,
+`--rule-h-faint`), because that is how the book is ruled. The dither is no longer
+there to fake a lighter value — the colour does that — it is there to keep the page
+one raster.
+
+**The tokens in `app/globals.css` are the single source of truth.**
+`app/components/MoneyBox.tsx` reads `--ground` and `--mark` at runtime;
+`scripts/make-favicon.mjs` parses `--mark` out of the stylesheet at generation time.
+Never restate a colour anywhere else — it was hardcoded in three places once and
+silently kept the old value through a palette change, and the favicon stopped
+matching the site. Two places unavoidably carry copies, both commented:
+`themeColor` in `app/layout.tsx` (Next resolves viewport metadata before any
+stylesheet exists) and the `readColor` fallbacks in `MoneyBox.tsx`. Change `--ground`
+or `--mark` and grep for the old hex.
+
+**The object stays strictly two colours.** Red never reaches the dither — the shader
+takes `--ground` and `--mark` only.
 
 **Never use `opacity` to make a tint.** A translucent mark anti-aliases to a real
 midtone, which the design does not allow. Use a sparser dither instead
 (`--rule-h-faint`, or a 25% `conic-gradient`). Same reason the About scrim is a 50%
 checkerboard of ground rather than a translucent black.
+
+## Generated brand assets
+
+Both are traced from brush drawings in `../hasaleh media/`, both are committed, and
+both are generated — do not hand-edit either output. The tracer is shared:
+`scripts/lib/trace-bitmap.mjs`.
+
+- `public/wordmark.svg` — `npm run wordmark`, from `hasaleh logo.png`. The masthead
+  uses it as a **CSS mask over `currentColor`**, so the wordmark inherits `--mark` and
+  cannot drift from the palette. The `.wordmark` element must stay **childless** — its
+  accessible name is an `aria-label`, and any text node inside would be masked along
+  with the drawing. Its width is derived from the viewBox aspect in the CSS, so a
+  redraw at a different aspect ratio means updating that `calc()`.
+- `app/icon.svg` — `npm run favicon`, from `hasaleh favicon.png`, struck out of a
+  drawn coin with `evenodd`. It no longer derives from the mesh, so **`npm run model`
+  no longer regenerates it** — but it does still parse the palette out of
+  `globals.css`, so re-run it after any colour change.
+
+Two things the tracer gets right that are easy to break:
+
+- **Tolerance is in output units, not source pixels.** The same drawing at 1000 units
+  wide and 32 units wide needs the same *visual* tolerance and wildly different
+  source ones. `loopsToPath` converts.
+- **Winding comes from the edge walk**, not from a post-pass, which is what lets a
+  traced glyph be punched out of a disc. Do not "fix" loop direction.
+
+An XML comment cannot contain a double hyphen, so a generator that writes `--mark`
+into one emits an SVG every parser rejects. It cost a debugging cycle once.
 
 **`--px: 3px` and `DITHER_PIXEL` in `app/components/MoneyBox.tsx` must match.** They are the same
 raster — CSS checkerboards and the WebGL dither land on one grid, and that is what makes

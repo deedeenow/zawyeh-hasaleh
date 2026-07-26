@@ -458,8 +458,11 @@ export default function MoneyBox({ fill, pulseKey, pulseDirection }: MoneyBoxPro
         uRasterSize: { value: new THREE.Vector2(2, 2) },
         uPixel: { value: DITHER_PIXEL },
         uDevelop: { value: 0 },
-        uGround: { value: readColor('--ground', '#ffffff') },
-        uMark: { value: readColor('--mark', '#0f52ba') },
+        // Fallbacks only, for a document with no stylesheet applied yet. They still
+        // have to track globals.css: a stale pair here renders a correct dither in
+        // the wrong palette, which looks like a shader bug rather than a typo.
+        uGround: { value: readColor('--ground', '#f3ece1') },
+        uMark: { value: readColor('--mark', '#1a3a6b') },
       },
       vertexShader: DITHER_VERTEX_SHADER,
       fragmentShader: DITHER_FRAGMENT_SHADER,

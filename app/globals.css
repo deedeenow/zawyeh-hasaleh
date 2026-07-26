@@ -1,26 +1,39 @@
 /* ==========================================================================
-   حصالة / HASALEH — 1-bit design tokens
-   Two values, no accent. Every apparent tint on this page is a real 3px
-   checkerboard on the same grid as the WebGL dither, so the whole document
-   reads as one raster. Nothing here is allowed to be an anti-aliased midtone.
+   حصالة / HASALEH — design tokens
+   Modelled on a دفتر الديوان: an Ottoman-era ledger book. Three inks and no
+   more, and each one has exactly one job — paper, writing, printed grid. Every
+   apparent tint on this page is a real 3px checkerboard on the same grid as the
+   WebGL dither, so the whole document reads as one raster. Nothing here is
+   allowed to be an anti-aliased midtone.
    ========================================================================== */
 
 :root {
-  /* Sapphire on white, 7.15:1 against the ground — AAA, not merely AA.
-     Blue can be both vivid and high-contrast in a way green cannot: its luminance
-     coefficient is low, so a saturated blue stays dark. The greens this replaces
-     topped out around 5.3:1 before turning pale, and the extra contrast here also
-     helps the fine dithered detail on the object stand out against white.
-     Chosen over Tailwind's #2563eb (5.17:1), which is the default tech blue.
-     THIS PAIR IS THE SINGLE SOURCE OF TRUTH. MoneyBox.tsx reads both at runtime for
-     the WebGL dither, and scripts/make-favicon.mjs parses them out of this file, so
-     the palette is never restated anywhere else. */
-  --ground: #ffffff;
-  --mark: #0f52ba;
+  /* Read off the ledger itself. The page is warm cream stock, the entries are
+     written in a blue-black iron-gall ink, and the column grid was printed in red
+     before anyone wrote a figure on it. That division is the whole palette:
+     --mark is what a hand puts on the page, --rule is what the press put there
+     first, --ground is the paper. Nothing written is ever red and no rule is ever
+     ink, which is why three colours do not read as three colours.
+
+     Ink is 9.6:1 on the paper — AAA, and up from the 7.15:1 of the sapphire-on-
+     white this replaces, which also gives the fine dithered detail on the object
+     more to stand against. Kept navy rather than black so it still reads as ink.
+
+     THESE THREE ARE THE SINGLE SOURCE OF TRUTH. MoneyBox.tsx reads --ground and
+     --mark at runtime for the WebGL dither, and scripts/make-favicon.mjs parses
+     --mark out of this file, so the palette is never restated anywhere else. The
+     one unavoidable exception is `themeColor` in app/layout.tsx, which is Next
+     metadata and cannot see a stylesheet; it is commented there. */
+  --ground: #f3ece1;
+  --mark: #1a3a6b;
+  /* The printed grid. 4.8:1 on the paper — past 3:1 for non-text graphics with
+     room to spare, and deliberately well short of the ink, because a ruling that
+     competes with the writing is a ruling drawn wrong. */
+  --rule: #b0453c;
   /* Only for the favicon, which sits in browser chrome rather than on the page and
-     so cannot assume a white ground. The brand blue vanishes against a dark
-     toolbar. Not used anywhere in the page itself. */
-  --mark-on-dark: #7dd3fc;
+     so cannot assume the paper behind it. The ink vanishes against a dark toolbar,
+     so a lighter tint of the same hue takes over. Not used anywhere in the page. */
+  --mark-on-dark: #8fb4e8;
 
   /* One number governs the raster. Change it and the 3D dither follows
      (see DITHER_PIXEL in app/components/MoneyBox.tsx). */
@@ -32,11 +45,16 @@
   --d25: conic-gradient(var(--mark) 0 25%, transparent 0);
   --d75: conic-gradient(transparent 0 25%, var(--mark) 0);
 
-  /* Dithered hairlines. A 1-bit rule cannot be dimmed, only broken up. */
-  --rule-h: repeating-linear-gradient(90deg, var(--mark) 0 var(--px), transparent var(--px) var(--tile));
-  --rule-v: repeating-linear-gradient(180deg, var(--mark) 0 var(--px), transparent var(--px) var(--tile));
-  /* 25% — for rules that need to sit back without becoming grey. */
-  --rule-h-faint: repeating-linear-gradient(90deg, var(--mark) 0 var(--px), transparent var(--px) calc(var(--tile) * 2));
+  /* The ruling, and it follows the book: in the دفتر the vertical column rules are
+     unbroken red, and the horizontal ruling is much finer. So verticals are solid
+     and horizontals are dithered — the dither is what keeps a hairline from
+     shouting, now that the colour rather than the coverage carries the recede.
+     A solid gradient rather than a plain colour so every call site can stay on
+     `background-image` and this line remains the only place to change. */
+  --rule-v: linear-gradient(var(--rule), var(--rule));
+  --rule-h: repeating-linear-gradient(90deg, var(--rule) 0 var(--px), transparent var(--px) var(--tile));
+  /* 25% — for the finest ruling, which needs to sit back without going pink. */
+  --rule-h-faint: repeating-linear-gradient(90deg, var(--rule) 0 var(--px), transparent var(--px) calc(var(--tile) * 2));
 
   --display: Copperplate, "Copperplate Gothic Light", "Engravers MT", "Bodoni 72 Smallcaps", serif;
   --mono: Menlo, Monaco, "SF Mono", "DejaVu Sans Mono", monospace;
@@ -205,11 +223,25 @@ body {
   gap: 0.7rem;
 }
 
+/* The drawn حصالة, not type. public/wordmark.svg is the traced outline of the real
+   brush drawing (see scripts/make-wordmark.mjs), used as a mask over currentColor
+   rather than as an image — so the wordmark takes --mark from the cascade like every
+   other stroke on the page and cannot drift from the palette.
+   Sized by height, with width from the drawing's own aspect ratio, so a redraw at a
+   different width does not resize the masthead. The element has no text child: the
+   accessible name comes from aria-label, and a real text node would be masked into
+   nonsense showing through the letterforms. */
 .wordmark {
-  font-family: var(--display-ar);
-  font-size: 1.625rem;
-  line-height: 1;
-  letter-spacing: 0;
+  display: block;
+  height: 1.75rem;
+  width: calc(1.75rem * 1000 / 247);
+  background: currentColor;
+  -webkit-mask: url(/wordmark.svg) no-repeat center / contain;
+  mask: url(/wordmark.svg) no-repeat center / contain;
+  /* Baseline-aligns the drawing against the Latin brand text beside it. The
+     masthead is a baseline-aligned flex row, and a replaced box sits on its bottom
+     edge — which reads a touch low next to type that has descenders. */
+  transform: translateY(0.14em);
 }
 
 .brand {
@@ -384,13 +416,15 @@ body {
   position: relative;
 }
 
+/* Solid, not dithered, and the only heavy horizontal on the page — the same bold
+   red rule the دفتر prints under its column headings before the entries start. */
 .rail-head::after {
   content: "";
   position: absolute;
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: var(--mark);
+  background: var(--rule);
 }
 
 .rail-title {
@@ -575,13 +609,15 @@ body {
   background-size: var(--tile) var(--tile);
 }
 
+/* Ruled in red like everything else that frames rather than states — the dialog is
+   a box drawn on the page, not something written on it. */
 .dialog {
   position: relative;
   width: min(54ch, 100%);
   max-height: 100%;
   overflow-y: auto;
   background: var(--ground);
-  border: 1px solid var(--mark);
+  border: 1px solid var(--rule);
 }
 
 .dialog-head {
@@ -601,7 +637,7 @@ body {
   inset-inline: 0;
   bottom: 0;
   height: 1px;
-  background: var(--mark);
+  background: var(--rule);
 }
 
 /* The only inverted control on the page, so there is no doubt what closes this. */

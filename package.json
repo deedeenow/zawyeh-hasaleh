@@ -8,9 +8,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "model": "node scripts/prepare-model.mjs && node scripts/make-favicon.mjs",
+    "model": "node scripts/prepare-model.mjs",
     "seed": "node scripts/seed-sanity.mjs",
     "favicon": "node scripts/make-favicon.mjs",
+    "wordmark": "node scripts/make-wordmark.mjs",
     "obj": "node scripts/mesh-to-obj.mjs"
   },
   "dependencies": {

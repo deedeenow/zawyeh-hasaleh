@@ -230,20 +230,45 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
 
 ## How the design works
 
-- **Two colours.** Sapphire `#0f52ba` on white `#ffffff`, no accent. Emphasis is
-  inversion, never hue. The tokens are `--ground` and `--mark` — the ground is the
-  paper, the mark is everything drawn on it.
-  7.15:1 against the ground, which is AAA rather than merely AA. Blue can be both
-  vivid and high-contrast in a way green cannot: its luminance coefficient is low, so
-  a saturated blue stays dark. The greens this went through topped out near 5.3:1
-  before turning pale, and the extra contrast also helps the fine dithered detail on
-  the object read against white. Chosen over Tailwind's `#2563eb` (5.17:1), which is
-  the default tech blue.
-  **`--mark` and `--ground` are the single source of truth.** `MoneyBox.tsx` reads
-  them at runtime and `scripts/make-favicon.mjs` parses them out of the stylesheet,
-  so the palette is never restated. That indirection exists because it was once
-  hardcoded in three places and silently kept the old colour through a palette
-  change — the favicon stopped matching the site and nothing caught it.
+- **Three inks, from a دفتر الديوان.** The palette is read off an Ottoman-era
+  ledger book rather than invented: warm cream paper, entries written in a
+  blue-black iron-gall ink, and a column grid printed in red *before* anyone wrote a
+  figure on it.
+
+  | token | value | is |
+  | --- | --- | --- |
+  | `--ground` | `#f3ece1` | the paper |
+  | `--mark` | `#1a3a6b` | anything a hand puts on it |
+  | `--rule` | `#b0453c` | anything the press put there first |
+
+  That division is the whole discipline, and it is why three colours do not read as
+  three colours: **nothing written is ever red, and no rule is ever ink.** Emphasis
+  is still inversion, never hue — the newest entry is an ink block, not a red one.
+
+  Ink is 9.6:1 on the paper, up from the 7.15:1 of the sapphire-on-white this
+  replaces, so it is comfortably AAA and gives the fine dithered detail on the
+  object more to stand against. It stays navy rather than going black because it has
+  to read as ink. The rule is 4.8:1 — past 3:1 for non-text graphics with room
+  spare, and deliberately well short of the ink, because a ruling that competes with
+  the writing is a ruling drawn wrong.
+
+  The ruling follows the book too. In the دفتر the vertical column rules are
+  unbroken red and the horizontal ruling is much finer, so `--rule-v` is solid and
+  `--rule-h` / `--rule-h-faint` stay dithered. The dither is no longer there to fake
+  a lighter value — the colour does that now — it is there to keep the page one
+  raster.
+
+  **The three tokens in `app/globals.css` are the single source of truth.**
+  `MoneyBox.tsx` reads `--ground` and `--mark` at runtime and
+  `scripts/make-favicon.mjs` parses `--mark` out of the stylesheet, so the palette is
+  never restated. That indirection exists because it was once hardcoded in three
+  places and silently kept the old colour through a palette change — the favicon
+  stopped matching the site and nothing caught it. The one place a value *is*
+  restated is `themeColor` in `app/layout.tsx`: Next resolves viewport metadata on
+  the server, before a stylesheet exists, so it cannot read a custom property. It is
+  commented there and has to be changed by hand alongside `--ground`.
+
+  The object itself is still strictly two colours. Red never touches the dither.
   **`MoneyBox.tsx` reads both tokens out of the stylesheet at runtime**, so the
   WebGL dither uses exactly the same pair as the CSS checkerboards and the palette
   is never duplicated in JS. It deliberately does not build a `THREE.Color`: three
@@ -302,31 +327,79 @@ is a fils. All of that lives in one place — `lib/currency.ts`.
   ~1.15s. That is the only entrance animation; `prefers-reduced-motion` skips it
   along with the rotation and the bob.
 - **The About dialog dims with a checkerboard, not a translucent black** — which
-  would render as grey. A 50% scrim of pure ink half-erases the page instead,
-  dimming it without leaving 1-bit.
+  would render as grey. A 50% scrim of the *paper* colour half-erases the page
+  instead, veiling it without introducing a value that is not in the palette.
 
-## The favicon
+## The drawn marks
 
-`app/icon.svg` is **generated from the scan**, not drawn by hand:
+Both brand assets are the **real brush drawings** from `hasaleh media/`, traced to
+vector — not type, and not bitmaps:
 
 ```bash
-npm run favicon
+npm run wordmark     # hasaleh logo.png    -> public/wordmark.svg
+npm run favicon      # hasaleh favicon.png -> app/icon.svg (on the coin)
 ```
 
-Because the Hasaleh is a body of revolution, its silhouette is completely
-determined by the maximum radius at each height. The script measures `r(y)` from
-`public/hasaleh.mesh` and mirrors that profile about the axis, so the outline is
-the real object's, to within the band resolution.
+The tracing is shared, in `scripts/lib/trace-bitmap.mjs`. It is exact rather than
+curve-fitted: every boundary between an inked pixel and a blank one becomes a directed
+unit edge with the ink on its left, and the edges link head-to-tail into closed loops.
+That gives correct winding for free, so the counters inside the ه and the ص stay holes
+— and it is what lets a traced glyph be punched out of a disc with `evenodd`.
 
-`npm run model` runs it too, since the icon derives from the mesh.
+Simplification is Douglas-Peucker with **the tolerance stated in output units, not
+source pixels**. That matters: the same drawing rendered 200px wide and 16px wide wants
+wildly different source tolerances but the same visual one. At 1.1 units of a
+1000-unit viewBox the wordmark goes from 7300 traced points to 346 and 4.5 KB; at 0.16
+units of a 32-unit viewBox the favicon mark goes from 2612 to 48.
 
-Tuned for where a favicon is actually seen: 26 bands rather than the mesh's full
-detail (which becomes noise at 16px), a deliberately heavy 3-unit stroke (a thin
-one vanishes at that size), and two smoothing passes to take the scan's
-measurement jitter out of the outline. It also carries a
-`prefers-color-scheme: dark` rule — the brand colour disappears against a dark
-browser toolbar, so it lightens to `--mark-on-dark` there. Both colours are read from
-`globals.css` at generation time, never restated in the script.
+### The wordmark
+
+The masthead uses `public/wordmark.svg` as a **CSS mask over `currentColor`** — the
+shape comes from the asset, the colour from the cascade, so it takes `--mark` like
+every other stroke on the page and the two cannot drift apart.
+
+The masked element deliberately has **no text child**: the accessible name is an
+`aria-label`, because a real text node inside would be masked along with the drawing
+and show through the letterforms as nonsense.
+
+### The favicon
+
+`app/icon.svg` is the **حص mark struck on a coin**, and it took three revisions to get
+there. Each failure is worth knowing:
+
+1. **The money box itself**, traced from the scan's own silhouette. Accurate, and at
+   the 16px a favicon is actually shown at, unreadable — a hollow ovoid with a nub,
+   which is a lamp or a vase or nothing. (The icon no longer derives from the mesh, so
+   `npm run model` no longer runs it.)
+2. **A plain milled coin.** Reads at every size, says nothing about Hasaleh in
+   particular.
+3. **Both.** The coin carries the shape, the drawn mark carries the identity.
+
+One path, `fill-rule: evenodd`, so the disc and the mark punched out of it are a single
+silhouette that works on any background — which a favicon has to, because it sits in
+browser chrome and cannot assume the paper behind it. Nothing is stroked.
+
+Three proportions, all of them constrained rather than chosen:
+
+- **Reeds shallow and frequent** (24 at 0.8 units). The first attempt used 14 at 1.5
+  and read unmistakably as *gear teeth* — a cog, not a coin. Below about a unit of
+  depth they stop being teeth and become milling. At 16px they fall under a device
+  pixel each and average back into a slightly soft edge, which is the correct
+  failure: it degrades to a plain disc, not to a sprocket.
+- **The mark 22 units wide.** The drawing is about 1.67× wider than tall, so width is
+  what binds. At 24 it reaches past the notch floor and eats into the milling, which
+  reads as a broken rim rather than a struck face.
+- **No inner ring.** The mark is the device now. A ring as well is too much detail for
+  a 32-unit box, and inverting the rim proportions — a wide band around a small
+  centre — reads as a washer.
+
+The mark alone, without the coin, was tried and rejected: at 1.67:1 it fits the square
+so poorly that at 16px it collapses into a flat squiggle. The disc is what gives it
+presence at the size that matters.
+
+It also carries a `prefers-color-scheme: dark` rule — the ink disappears against a
+dark browser toolbar, so it lightens to `--mark-on-dark` there. Both colours are read
+from `globals.css` at generation time, never restated in the script.
 
 ## Structure
 
@@ -337,7 +410,7 @@ app/
   globals.css              all design tokens and layout
   page.tsx                 Arabic, RTL
   en/page.tsx              English, LTR
-  icon.svg                 favicon, generated from the scan
+  icon.svg                 favicon, the حص mark struck on a coin
   components/
     Bank.tsx               client shell, polls for new entries
     MoneyBox.tsx           loads the scan + Bayer dither post-pass
@@ -357,12 +430,15 @@ sanity/
     ledgerEntry.ts         copy into your Studio project
 scripts/
   prepare-model.mjs        OBJ -> decimated, uprighted binary mesh
-  make-favicon.mjs         mesh -> silhouette outline in app/icon.svg
+  lib/trace-bitmap.mjs     bitmap -> SVG outlines; shared by the two below
+  make-favicon.mjs         mark PNG -> coin in app/icon.svg
+  make-wordmark.mjs        logo PNG -> traced public/wordmark.svg
   seed-sanity.mjs          one-time import of the sample entries
 data/
   seed-entries.json        sample data for the import; unused at runtime
 public/
   hasaleh.mesh             generated by npm run model
+  wordmark.svg             generated by npm run wordmark
 ```
 
 ## Notes for when this joins the larger site
