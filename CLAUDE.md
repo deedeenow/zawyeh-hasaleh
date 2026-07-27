@@ -29,15 +29,18 @@ Asset pipeline (run from the repo root, all idempotent):
 ```bash
 npm run model        # OBJ -> public/hasaleh.mesh
 npm run favicon      # draws the coin in app/icon.svg; reads the palette from globals.css
-npm run wordmark     # logo PNG -> traced public/wordmark.svg
+npm run marks        # logo + sun PNGs -> traced SVGs in public/
 npm run obj          # mesh -> "hasaleh media/hasaleh-processed.obj" for Blender etc.
 npm run seed         # one-off import of data/seed-entries.json; needs SANITY_WRITE_TOKEN
 ```
 
-The source art lives **outside this repo** in `../hasaleh media/` — `hasaleh scan.obj`
-(22 MB) and `hasaleh logo.png`. Their outputs (`public/hasaleh.mesh`,
-`public/wordmark.svg`, `app/icon.svg`) are generated and committed, so a deploy never
-needs that folder.
+The source art lives **outside this repo**: `../hasaleh media/` holds `hasaleh
+scan.obj` (22 MB), `hasaleh logo.png` and `hasaleh favicon.png`, and `../../media/`
+holds `zawyeh-sun.png` — which belongs to the parent brand and is shared by every
+Zawyeh property, so it is referenced across the sub-brand boundary rather than copied
+in. All the outputs (`public/hasaleh.mesh`, `public/wordmark.svg`,
+`public/zawyeh-sun.svg`, `app/icon.svg`) are generated and committed, so a deploy never
+needs either folder.
 
 ## Data flow
 
@@ -123,26 +126,35 @@ checkerboard of ground rather than a translucent black.
 
 ## Generated brand assets
 
-Both are traced from brush drawings in `../hasaleh media/`, both are committed, and
-both are generated — do not hand-edit either output. The tracer is shared:
-`scripts/lib/trace-bitmap.mjs`.
+Three, all traced from brush drawings, all committed, none to be hand-edited. The
+tracer is shared: `scripts/lib/trace-bitmap.mjs`.
 
-- `public/wordmark.svg` — `npm run wordmark`, from `hasaleh logo.png`. The masthead
-  uses it as a **CSS mask over `currentColor`**, so the wordmark inherits `--mark` and
-  cannot drift from the palette. The `.wordmark` element must stay **childless** — its
-  accessible name is an `aria-label`, and any text node inside would be masked along
-  with the drawing. Its width is derived from the viewBox aspect in the CSS, so a
-  redraw at a different aspect ratio means updating that `calc()`.
+- `public/wordmark.svg` and `public/zawyeh-sun.svg` — `npm run marks`, from
+  `hasaleh logo.png` and `zawyeh-sun.png`. The masthead uses both as **CSS masks over
+  `currentColor`**, so they inherit `--mark` and cannot drift from the palette.
 - `app/icon.svg` — `npm run favicon`, from `hasaleh favicon.png`, struck out of a
   drawn coin with `evenodd`. It no longer derives from the mesh, so **`npm run model`
   no longer regenerates it** — but it does still parse the palette out of
   `globals.css`, so re-run it after any colour change.
 
+The masthead lockup is **sun, red rule, wordmark**. Three things about it:
+
+- The sun is **first in the DOM** and the flex row follows `dir`, so it leads in both
+  languages with no direction-specific rule. Reversing the DOM order would silently
+  invert the hierarchy in both.
+- `.wordmark` and `.sun` must stay **childless** — the accessible name is an
+  `aria-label`, and any text node inside would be masked along with the drawing.
+- Both are **sized by height**, with width from a `calc()` carrying the viewBox
+  aspect. A redraw at a different aspect means updating that ratio, or the mask
+  letterboxes inside a wrongly-shaped box.
+
 Two things the tracer gets right that are easy to break:
 
 - **Tolerance is in output units, not source pixels.** The same drawing at 1000 units
-  wide and 32 units wide needs the same *visual* tolerance and wildly different
-  source ones. `loopsToPath` converts.
+  wide and 32 units wide needs the same *visual* tolerance and wildly different source
+  ones. `loopsToPath` converts. It also means the right tolerance depends on the
+  source's resolution: the sun is a 257px drawing, so anything under ~4 units is finer
+  than its own pixel staircase and simplifies nothing.
 - **Winding comes from the edge walk**, not from a post-pass, which is what lets a
   traced glyph be punched out of a disc. Do not "fix" loop direction.
 

@@ -11,7 +11,7 @@
     "model": "node scripts/prepare-model.mjs",
     "seed": "node scripts/seed-sanity.mjs",
     "favicon": "node scripts/make-favicon.mjs",
-    "wordmark": "node scripts/make-wordmark.mjs",
+    "marks": "node scripts/make-marks.mjs",
     "obj": "node scripts/mesh-to-obj.mjs"
   },
   "dependencies": {

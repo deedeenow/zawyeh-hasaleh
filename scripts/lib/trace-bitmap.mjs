@@ -1,10 +1,10 @@
 /**
  * Traces a 1-bit bitmap into SVG outlines.
  *
- * Shared by scripts/make-wordmark.mjs and scripts/make-favicon.mjs, both of which
- * turn a brush drawing from `hasaleh media/` into a path that can take its colour
- * from CSS. Extracted when the favicon became a drawn mark too — it was the same
- * two hundred lines twice, and the second copy would have drifted.
+ * Shared by scripts/make-marks.mjs and scripts/make-favicon.mjs, which between them
+ * turn three brush drawings into paths that can take their colour from CSS.
+ * Extracted when the favicon became a drawn mark too — it was the same two hundred
+ * lines twice, and the second copy would have drifted.
  *
  * The trace is exact rather than curve-fitted. Every boundary between an inked pixel
  * and a blank one becomes a directed unit edge with the ink on its left; the edges

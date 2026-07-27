@@ -154,7 +154,6 @@ body {
 .shell:lang(ar) .eyebrow,
 .shell:lang(ar) .readout-last-tag,
 .shell:lang(ar) .link-quiet,
-.shell:lang(ar) .brand,
 .shell:lang(ar) .dialog-close {
   font-family: var(--display-ar);
   letter-spacing: 0;
@@ -199,9 +198,13 @@ body {
   height: 100dvh;
 }
 
+/* Centre-aligned rather than baseline-aligned, because the masthead no longer holds
+   any type on the left: both marks are drawn images with no baseline of their own, and
+   a flex baseline falls to the bottom margin edge of the first one — which dropped the
+   nav well below the lockup. */
 .masthead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
   padding: 0.9rem var(--gutter);
@@ -217,43 +220,58 @@ body {
   background-image: var(--rule-h);
 }
 
+/* The lockup: Zawyeh's sun, a rule, then this ledger's name. The sun is first in the
+   DOM and the flow follows `dir`, so it leads in both directions — rightmost in
+   Arabic, leftmost in English — without a second rule or a row-reverse. That order is
+   the hierarchy: the institution, then the thing that belongs to it. */
 .masthead-mark {
   display: flex;
-  align-items: baseline;
-  gap: 0.7rem;
+  align-items: center;
+  gap: 1.15rem;
 }
 
-/* The drawn حصالة, not type. public/wordmark.svg is the traced outline of the real
-   brush drawing (see scripts/make-wordmark.mjs), used as a mask over currentColor
-   rather than as an image — so the wordmark takes --mark from the cascade like every
-   other stroke on the page and cannot drift from the palette.
-   Sized by height, with width from the drawing's own aspect ratio, so a redraw at a
-   different width does not resize the masthead. The element has no text child: the
-   accessible name comes from aria-label, and a real text node would be masked into
-   nonsense showing through the letterforms. */
-.wordmark {
+/* Solid, like every vertical in this palette. A dithered rule at this length would
+   read as five dots rather than as a divider. */
+.masthead-rule {
+  width: 1px;
+  height: 2.1rem;
+  background: var(--rule);
+  flex: none;
+}
+
+/* The two drawn marks, neither of them type. Both are traced outlines of the real
+   brush drawings (see scripts/make-marks.mjs), used as masks over currentColor rather
+   than as images — so both take --mark from the cascade like every other stroke on the
+   page and cannot drift from the palette.
+
+   Each is sized by HEIGHT, with width derived from its own viewBox aspect, so a
+   redraw at a different pixel width does not resize the masthead. If either drawing is
+   redrawn at a different *aspect*, the ratio in its `calc()` has to change with it.
+
+   Neither element has a text child: the accessible name comes from aria-label, and a
+   real text node would be masked into nonsense showing through the letterforms. */
+.wordmark,
+.sun {
   display: block;
-  height: 1.75rem;
-  width: calc(1.75rem * 1000 / 247);
+  flex: none;
   background: currentColor;
+}
+
+.wordmark {
+  height: 2rem;
+  width: calc(2rem * 1000 / 247);
   -webkit-mask: url(/wordmark.svg) no-repeat center / contain;
   mask: url(/wordmark.svg) no-repeat center / contain;
-  /* Baseline-aligns the drawing against the Latin brand text beside it. The
-     masthead is a baseline-aligned flex row, and a replaced box sits on its bottom
-     edge — which reads a touch low next to type that has descenders. */
-  transform: translateY(0.14em);
 }
 
-.brand {
-  font-family: var(--display);
-  font-size: 0.75rem;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  line-height: 1;
-}
-
-.brand.arabic {
-  font-size: 0.9375rem;
+/* Taller than the wordmark on purpose. The sun is a compact mark and the wordmark a
+   wide one, so matching their heights would leave the sun looking like a bullet next
+   to it; this is roughly where the two carry the same visual weight. */
+.sun {
+  height: 2.65rem;
+  width: calc(2.65rem * 1000 / 1050);
+  -webkit-mask: url(/zawyeh-sun.svg) no-repeat center / contain;
+  mask: url(/zawyeh-sun.svg) no-repeat center / contain;
 }
 
 .masthead-nav {

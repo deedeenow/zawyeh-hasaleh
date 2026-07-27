@@ -52,12 +52,17 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
   return (
     <div className="shell" dir={dict.dir} lang={dict.locale}>
       <header className="masthead">
+        {/* Zawyeh's sun, a rule, then this ledger's name. Both marks are drawn, masked
+            in from public/ — see .sun and .wordmark in globals.css. Both are
+            deliberately childless: the word is the accessible name, not a text node,
+            because anything inside would be masked along with the drawing.
+
+            The sun is first in the DOM and the row follows `dir`, so it leads in both
+            languages without a direction-specific rule. */}
         <div className="masthead-mark">
-          {/* The drawn wordmark, masked in from public/wordmark.svg — see .wordmark in
-              globals.css. Deliberately childless: the word is the accessible name, not
-              a text node, because anything inside would be masked along with it. */}
+          <span className="sun" role="img" aria-label={dict.brand} />
+          <span className="masthead-rule" aria-hidden="true" />
           <span className="wordmark" role="img" aria-label={dict.wordmark} lang="ar" />
-          <span className={dict.locale === 'ar' ? 'brand arabic' : 'brand'}>{dict.brand}</span>
         </div>
 
         <nav className="masthead-nav">
