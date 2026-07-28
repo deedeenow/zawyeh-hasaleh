@@ -23,14 +23,58 @@ export function formatBalance(minor: number): string {
   return minor < 0 ? `${MINUS}${formatAmount(minor)}` : formatAmount(minor);
 }
 
+/**
+ * The ledger keeps Amman time, not the reader's and not the server's.
+ *
+ * This is a Jordanian organisation's book: a figure recorded on the 31st was
+ * recorded on the 31st, and it should say so to someone reading in Berlin. Left on
+ * local time, the same entry rendered as 31.07 on a laptop in Amman and 01.08 on
+ * one in London — and once the monthly جردة started grouping entries by month, that
+ * became visible as an entry filed under a month whose date it does not show.
+ *
+ * Pinning it also removes a server/client split: `view()` derives each جردة's
+ * totals on the server, which runs UTC, while the dates beside them are formatted
+ * in the browser. Both now agree because both are Amman.
+ */
+export const LEDGER_TIME_ZONE = 'Asia/Amman';
+
+/** The Amman calendar parts of an instant. */
+function ammanParts(iso: string): { year: number; month: number; day: number } | null {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  // en-CA gives ISO-ordered numeric parts, which is the cheapest way to read a
+  // wall-clock date in a named zone without pulling in a date library.
+  const [year, month, day] = new Intl.DateTimeFormat('en-CA', {
+    timeZone: LEDGER_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+    .format(date)
+    .split('-')
+    .map(Number);
+  return { year, month, day };
+}
+
+/**
+ * "YYYY-MM" in Amman time — the key a جردة is filed under, and the key entries are
+ * grouped by. Pure and deterministic on both server and client.
+ */
+export function monthKey(iso: string): string | null {
+  const parts = ammanParts(iso);
+  if (!parts) return null;
+  return `${parts.year}-${String(parts.month).padStart(2, '0')}`;
+}
+
 /** Compact day.month for the ledger rail — the year only appears when it isn't this one. */
 export function formatDate(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '——.——';
-  const day = String(date.getDate()).padStart(2, '0');
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  if (date.getFullYear() === new Date().getFullYear()) return `${day}.${month}`;
-  return `${day}.${month}.${String(date.getFullYear()).slice(2)}`;
+  const parts = ammanParts(iso);
+  if (!parts) return '——.——';
+  const day = String(parts.day).padStart(2, '0');
+  const month = String(parts.month).padStart(2, '0');
+  const thisYear = ammanParts(new Date().toISOString())?.year;
+  if (parts.year === thisYear) return `${day}.${month}`;
+  return `${day}.${month}.${String(parts.year).slice(2)}`;
 }
 
 export function formatFullDate(iso: string, locale: 'ar' | 'en' = 'en'): string {
@@ -39,7 +83,12 @@ export function formatFullDate(iso: string, locale: 'ar' | 'en' = 'en'): string 
   // `-u-nu-latn` keeps Western digits in Arabic too. Mixing digit systems between
   // the dates and the tabular figures in the ledger would read as a mistake.
   const tag = locale === 'ar' ? 'ar-u-nu-latn' : 'en-GB';
-  return date.toLocaleDateString(tag, { day: 'numeric', month: 'long', year: 'numeric' });
+  return date.toLocaleDateString(tag, {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    timeZone: LEDGER_TIME_ZONE,
+  });
 }
 
 /**

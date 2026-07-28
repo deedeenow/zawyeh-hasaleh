@@ -580,6 +580,113 @@ body {
   color: var(--ground);
 }
 
+/* --- الجردة: the monthly stocktake --------------------------------------- */
+
+/* Spans both columns and paints over the spine, which is the structural point
+   rather than a decorative one: a transaction belongs to one side of a T-account,
+   and a month's reckoning belongs to the whole page. The opaque ground is what
+   interrupts the printed grid — the ruling stops where the month is reckoned. */
+.jarda {
+  position: relative;
+  background: var(--ground);
+  border-block: 1px solid var(--rule);
+}
+
+/* Two red rules would double up against the neighbouring band's, so the pair
+   collapses the way table borders do. */
+.jarda + .jarda {
+  border-block-start: 0;
+}
+
+.jarda-head {
+  display: block;
+  width: 100%;
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0.85rem var(--gutter);
+  cursor: pointer;
+}
+
+/* The highlight. Instant, with NO transition, and that is deliberate — a fade
+   between paper and ink passes through every midtone in between, which is the one
+   thing this palette does not allow. It snaps, like a stamp coming down. */
+.jarda-head:hover,
+.jarda-head:focus-visible {
+  background: var(--mark);
+  color: var(--ground);
+}
+
+/* The focus ring is redundant once the whole band inverts, and outside a
+   1px-ruled band it reads as a second border. */
+.jarda-head:focus-visible {
+  outline: none;
+}
+
+.jarda-title {
+  display: block;
+  font-family: var(--display);
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.shell:lang(ar) .jarda-title {
+  font-family: var(--display-ar);
+  font-size: 1.0625rem;
+  letter-spacing: 0;
+}
+
+.jarda-totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.45rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.shell:lang(ar) .jarda-totals {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Underlined in the current colour, so it stays legible through the invert. */
+.jarda-cue {
+  display: block;
+  width: fit-content;
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  border-bottom: 1px solid currentColor;
+  padding-bottom: 1px;
+}
+
+/* Opened in place rather than in a dialog. The About modal already owns that
+   gesture, and a month's reckoning belongs inside the ledger, not floating over it. */
+.jarda-body {
+  padding: 0 var(--gutter) 1.1rem;
+  font-size: 0.8125rem;
+  max-width: 46ch;
+}
+
+.jarda-body p {
+  margin: 0 0 0.6rem;
+  padding-top: 0.6rem;
+  background-image: var(--rule-h);
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  background-size: 100% 1px;
+}
+
+.jarda-body p:last-child {
+  margin-bottom: 0;
+}
+
 .entries-empty {
   padding: 2rem var(--gutter);
   /* box-sizing is border-box, so the gutters have to be added back or the

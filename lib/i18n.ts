@@ -29,6 +29,33 @@ export function pickNote(
   return locale === 'ar' ? (entry.noteAr ?? entry.note) : (entry.note ?? entry.noteAr);
 }
 
+/**
+ * A جردة's prose, falling back to the other language. `coerceJarda` already
+ * guarantees at least one of the two is non-empty, so this cannot return nothing for
+ * a جردة that made it this far.
+ */
+export function pickBody(
+  jarda: { body: string[]; bodyAr: string[] },
+  locale: Locale,
+): string[] {
+  const preferred = locale === 'ar' ? jarda.bodyAr : jarda.body;
+  if (preferred.length > 0) return preferred;
+  return locale === 'ar' ? jarda.body : jarda.bodyAr;
+}
+
+/**
+ * A جردة's own title if one was written, otherwise the month's name. Most months
+ * will not need a title — "جردة تموز" is usually the whole heading.
+ */
+export function pickJardaTitle(
+  jarda: { month: string; title?: string; titleAr?: string },
+  locale: Locale,
+  dict: Dictionary,
+): string {
+  const written = locale === 'ar' ? (jarda.titleAr ?? jarda.title) : (jarda.title ?? jarda.titleAr);
+  return written ?? dict.jardaTitle(jarda.month);
+}
+
 export const DEFAULT_LOCALE: Locale = 'ar';
 
 export const DIRECTION: Record<Locale, 'rtl' | 'ltr'> = {
@@ -66,6 +93,12 @@ export interface Dictionary {
   aboutClose: string;
   /** Arabic needs dual and two plural forms; English needs one. */
   entryCount: (n: number) => string;
+  /** Heading of a monthly جردة, e.g. "جردة تموز" / "The July stocktake". */
+  jardaTitle: (month: string) => string;
+  /** Opens the جردة. */
+  jardaOpen: string;
+  /** Closes it again. */
+  jardaClose: string;
   /**
    * Localises the digits in an already-formatted string. Arabic-Indic digits on
    * the Arabic page; identity in English.
@@ -86,6 +119,57 @@ const ARABIC_INDIC = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩'
  */
 function toArabicDigits(value: string): string {
   return value.replace(/[0-9]/g, (d) => ARABIC_INDIC[Number(d)]);
+}
+
+/**
+ * Levantine month names, not transliterated Gregorian ones. In Jordan the months are
+ * تموز and آب, not "يوليو" and "أغسطس" — the latter reads as Gulf or Egyptian press,
+ * and on a ledger kept in Amman it would sound borrowed.
+ *
+ * Deliberately not `toLocaleDateString('ar-JO')`: ICU's answer for that locale has
+ * changed between versions and across runtimes, so the month a reader sees would
+ * depend on which Node built the page.
+ */
+const MONTHS_AR = [
+  'كانون الثاني',
+  'شباط',
+  'آذار',
+  'نيسان',
+  'أيار',
+  'حزيران',
+  'تموز',
+  'آب',
+  'أيلول',
+  'تشرين الأول',
+  'تشرين الثاني',
+  'كانون الأول',
+];
+
+const MONTHS_EN = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/**
+ * "2026-07" to a month name and, when it is not the current year, a year too. The
+ * year is dropped for the current one for the same reason `formatDate` drops it:
+ * on a page that is mostly this year, repeating it is noise.
+ */
+function monthLabel(month: string, names: string[], digits: (value: string) => string): string {
+  const [year, index] = month.split('-').map(Number);
+  const name = names[index - 1];
+  if (!name) return month;
+  return year === new Date().getFullYear() ? name : `${name} ${digits(String(year))}`;
 }
 
 const ar: Dictionary = {
@@ -126,6 +210,9 @@ const ar: Dictionary = {
     if (n <= 10) return `${d} قيود`;
     return `${d} قيداً`;
   },
+  jardaTitle: (month) => `جردة ${monthLabel(month, MONTHS_AR, toArabicDigits)}`,
+  jardaOpen: 'اقرأ الجردة',
+  jardaClose: 'أغلق',
   digits: toArabicDigits,
 };
 
@@ -160,6 +247,9 @@ const en: Dictionary = {
   ],
   aboutClose: 'Close',
   entryCount: (n) => (n === 1 ? '1 entry' : `${n} entries`),
+  jardaTitle: (month) => `${monthLabel(month, MONTHS_EN, (value) => value)} stocktake`,
+  jardaOpen: 'Read the jarda',
+  jardaClose: 'Close',
   digits: (value) => value,
 };
 

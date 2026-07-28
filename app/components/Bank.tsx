@@ -131,6 +131,8 @@ export default function Bank({ initial, locale }: { initial: LedgerView; locale:
 
         <Ledger
           entries={ledger.entries}
+          // A ledger served by an older deploy has no `reviews` field at all.
+          reviews={ledger.reviews ?? []}
           totalInMinor={ledger.totalInMinor}
           totalOutMinor={ledger.totalOutMinor}
           dict={dict}

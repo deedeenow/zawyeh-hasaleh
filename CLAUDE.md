@@ -59,6 +59,44 @@ this app never writes to Sanity.
   document must not take the public page down.
 - `/api/ledger` is CORS-open on purpose: the larger Zawyeh site is expected to consume it.
 
+## الجردة — the monthly stocktake
+
+A second document type, `jarda`: once a month, why the money went where it went. Not
+a variant of `ledgerEntry` — no amount, no direction, at most one per month.
+
+- **Its totals are DERIVED, never authored.** `view()` computes each month's in/out
+  from the entries themselves. Never add an amount field to this type: an editor who
+  could type a total could contradict the ledger printed directly beneath it, and on
+  a transparency page that is the one bug that must not ship.
+- **It sits at the HEAD of its month's block**, above that month's newest entry. A
+  real ledger totals at the *end* of a period, but this rail runs newest-first, so
+  "below July's entries" is chronologically June and reads ambiguously.
+- **`reviews` is a separate array on `LedgerView`, not a merged timeline.**
+  `/api/ledger` is CORS-open and the larger Zawyeh site is expected to consume it, so
+  `entries` must keep its shape. `Ledger.tsx` does the interleaving client-side.
+- Body is plain text split on blank lines, matching how entry notes are authored.
+  Portable Text is the upgrade if جردات ever need links; paragraphs do not justify it.
+- Month names are the **Levantine** ones (تموز، آب، أيلول), hardcoded in `lib/i18n.ts`
+  rather than taken from `toLocaleDateString('ar-JO')` — ICU's answer for that locale
+  has changed between versions, so the month shown would depend on which Node built
+  the page.
+- The band **spans both columns and paints over the spine**. That is structural: a
+  transaction belongs to one side of a T-account, a month's reckoning to the page.
+- The hover highlight has **no transition, deliberately**. A fade between paper and
+  ink passes through every midtone in between, which the palette does not allow.
+
+## Time — the ledger keeps Amman hours
+
+`LEDGER_TIME_ZONE` in `lib/format.ts` is `Asia/Amman`, and `formatDate`,
+`formatFullDate` and `monthKey` all resolve through it.
+
+This is not cosmetic. On local time the same entry rendered as `31.07` in Amman and
+`01.08` in London, and once the جردة started grouping by month, an entry could be
+filed under a month whose date it did not show. It also removes a server/client
+split: `view()` derives each جردة's totals on the server, which runs UTC, while the
+dates beside them are formatted in the browser. Both agree now because both are
+Amman. **Do not reach for `getMonth()`/`getDate()` here** — use `monthKey`.
+
 ## Money
 
 Currency is the Jordanian dinar, which divides into **1000 fils, not 100**. All of it
@@ -189,8 +227,11 @@ applies an 8×8 ordered Bayer dither.
 ## Sanity schema — mind the divergence
 
 The live schema is **MCP-managed**: deployed through the Sanity connector, not from a
-local Studio project. `sanity/schemaTypes/ledgerEntry.ts` is a **mirror** for version
-history. Editing it changes nothing on its own, and it is excluded from `tsconfig.json`.
+local Studio project. `sanity/schemaTypes/*.ts` are **mirrors** for version
+history. Editing them changes nothing on its own, and they are excluded from `tsconfig.json`.
+Two types are deployed: `ledgerEntry` and `jarda`. Both are bilingual — `labelAr`/`label`,
+`noteAr`/`note`, `titleAr`/`title`, `bodyAr`/`body` — with Arabic first, and either side
+may be left empty because the site falls back to the other language.
 
 The MCP schema format takes declarative values only, so the deployed version drops
 `preview.prepare` and function-valued `initialValue`.

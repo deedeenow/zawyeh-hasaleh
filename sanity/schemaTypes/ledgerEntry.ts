@@ -50,29 +50,41 @@ export const ledgerEntry = defineType({
     }),
     defineField({
       name: 'amount',
-      title: 'Amount',
+      title: 'Amount (JOD)',
       type: 'number',
       description:
-        'Always a positive number — the direction above decides the sign. Up to two decimal places.',
+        'In dinars, always positive — the direction above decides the sign. Up to three decimal places, since the dinar divides into 1000 fils (e.g. 12.500).',
       validation: (Rule) =>
         Rule.required()
           .positive()
           .custom((value) => {
             if (typeof value !== 'number') return true;
-            const cents = value * 100;
-            // Guard against 12.345, which would silently round on the website.
-            if (Math.abs(cents - Math.round(cents)) > 1e-9) {
-              return 'Use at most two decimal places.';
+            // Three places, not two: the dinar has 1000 fils. See lib/currency.ts.
+            const fils = value * 1000;
+            // Guard against 12.3456, which would silently round on the website.
+            if (Math.abs(fils - Math.round(fils)) > 1e-9) {
+              return 'Use at most three decimal places.';
             }
             return true;
           }),
     }),
+    // Arabic first — it is the primary language, and the field order is the order an
+    // editor should think in. Either language may be left empty; the website falls
+    // back to the other so a half-translated entry still renders.
+    defineField({
+      name: 'labelAr',
+      title: 'ما الغرض — What for (Arabic)',
+      type: 'string',
+      description:
+        'Shown on the Arabic page, exactly as written. If left empty the Arabic page falls back to the English text.',
+      validation: (Rule) => Rule.max(120),
+    }),
     defineField({
       name: 'label',
-      title: 'What for',
+      title: 'What for (English)',
       type: 'string',
-      description: 'Shown on the website exactly as written. Keep it plain and specific.',
-      validation: (Rule) => Rule.required().max(120),
+      description: 'Shown on the English page, exactly as written. Keep it plain and specific.',
+      validation: (Rule) => Rule.max(120),
     }),
     defineField({
       name: 'date',
@@ -83,11 +95,21 @@ export const ledgerEntry = defineType({
       validation: (Rule) => Rule.required(),
     }),
     defineField({
-      name: 'note',
-      title: 'Note',
+      name: 'noteAr',
+      title: 'ملاحظة — Note (Arabic)',
       type: 'text',
       rows: 2,
-      description: 'Optional. One extra line of context, shown under the entry.',
+      description:
+        'Optional. One extra line of context, shown under the entry on the Arabic page.',
+      validation: (Rule) => Rule.max(400),
+    }),
+    defineField({
+      name: 'note',
+      title: 'Note (English)',
+      type: 'text',
+      rows: 2,
+      description:
+        'Optional. One extra line of context, shown under the entry on the English page.',
       validation: (Rule) => Rule.max(400),
     }),
   ],

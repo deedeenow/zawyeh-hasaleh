@@ -17,7 +17,7 @@ you know how it is put together.
 | --- | --- |
 | Project | `Zawyeh` — `3a03n44v` (org `oLuoFh4dA`) |
 | Dataset | `production`, **public** ACL |
-| Schema | `ledgerEntry`, MCP-managed on workspace `default` |
+| Schema | `ledgerEntry` and `jarda`, MCP-managed on workspace `default` |
 | Studio | https://zawyeh-hasaleh.sanity.studio/ |
 | Sample entries | created, then **unpublished** — they sit as drafts |
 
@@ -44,16 +44,21 @@ state and `/api/ledger` returns a 503 saying so, rather than crashing.
 ### The schema is MCP-managed — mind the divergence
 
 The deployed schema was created through the Sanity connector, not from a local
-Studio project. [sanity/schemaTypes/ledgerEntry.ts](sanity/schemaTypes/ledgerEntry.ts)
-is a **mirror** of it for reference and version history, not the source of truth.
-Editing that file changes nothing on its own.
+Studio project. The files in [sanity/schemaTypes/](sanity/schemaTypes/) are
+**mirrors** of it for reference and version history, not the source of truth.
+Editing them changes nothing on its own.
+
+Both types are bilingual, Arabic field first: `labelAr`/`label` and `noteAr`/`note`
+on an entry, `titleAr`/`title` and `bodyAr`/`body` on a جردة. Either side may be left
+empty — the site falls back to the other language, so a half-translated document
+still renders rather than going blank.
 
 Two consequences:
 
 - The MCP schema format takes declarative values only, so the deployed version
-  drops the custom `preview.prepare` (entries list as label + ISO date rather than
-  label + signed amount) and the `initialValue` date default. The two-decimal
-  validator did survive.
+  drops every `preview.prepare`, the `initialValue` date default, and the
+  `validation` rules. Those live in the mirrors for whenever the types are adopted
+  into a real Studio.
 - When the larger Zawyeh site gets a proper Studio in its own repo, adopt this type
   into it and deploy with `npx sanity@latest schema deploy` from then on. Mixing
   the two is what makes deployed and source schemas drift apart.
@@ -66,6 +71,73 @@ to bring them back, or delete them and start recording real ones.
 
 `data/seed-entries.json` plus `npm run seed` (needs `SANITY_WRITE_TOKEN`) remains
 available if you ever want to bulk-import from a file again.
+
+## الجردة — the monthly stocktake
+
+A second document type in the Studio, alongside the ledger entry. Once a month, in
+prose, **why** the money went where it went — so the ledger says more than what was
+spent, and the reasoning is public alongside the figures.
+
+In the rail it is a ruled band across both columns: the month, what moved through it,
+and a line to open it. Closed by default; hovering or focusing it fills the band with
+ink; clicking expands the reasoning in place.
+
+Five treatments were mocked up before this one — an inverted band, a bookmark tab, a
+margin brace, and two ruled variants. Notes on why this one:
+
+- **It spans both columns and paints over the spine.** Structural, not decorative: a
+  transaction belongs to one side of a T-account, and a month's reckoning belongs to
+  the whole page. It is the only row that crosses.
+- **Ink only on hover, never at rest.** A permanently inverted band was the most
+  striking option and the wrong one — the newest entry is already an ink block, and a
+  second persistent invert would stop the invert meaning "this is the live one".
+- **It opens in place, not in a dialog.** The About modal already owns that gesture,
+  and a reckoning belongs inside the ledger rather than floating over it.
+- **The highlight has no transition.** A fade between paper and ink passes through
+  every midtone in between, which is the one thing this palette forbids. It snaps.
+
+Two rules the data side keeps:
+
+- **The totals beside it are derived, never typed.** `view()` computes each month's in
+  and out from the entries. An editor able to type a total could contradict the ledger
+  printed directly beneath it — on a transparency page, that is the one bug that must
+  not ship. Do not add an amount field to this type.
+- **It sits at the head of its month**, above that month's newest entry. A real ledger
+  totals at the *end* of a period, but this rail runs newest-first, so "below July's
+  entries" is chronologically June and reads ambiguously.
+
+Months with no published جردة simply flow on — an empty divider every month would be
+worse than none. At most one is shown per month: if two documents claim the same
+month, the most recently edited wins.
+
+`/api/ledger` gained a `reviews` array. `entries` is untouched, so anything already
+consuming that endpoint keeps working.
+
+### Month names
+
+The Arabic page uses the **Levantine** months — كانون الثاني، شباط، آذار، نيسان، أيار،
+حزيران، تموز، آب، أيلول، تشرين الأول، تشرين الثاني، كانون الأول — not the
+transliterated Gregorian ones (يوليو، أغسطس), which read as Gulf or Egyptian press and
+would sound borrowed on a ledger kept in Amman. They are hardcoded in `lib/i18n.ts`
+rather than taken from `toLocaleDateString('ar-JO')`, whose answer has changed between
+ICU versions; the month a reader sees should not depend on which Node built the page.
+
+The year appears only when it is not the current one, matching how entry dates behave.
+
+## The ledger keeps Amman time
+
+`LEDGER_TIME_ZONE` in `lib/format.ts` is `Asia/Amman`, and every date the site shows
+resolves through it.
+
+This started as a real bug the جردة exposed. On local time the same entry rendered as
+`31.07` in Amman and `01.08` in London — and once entries were grouped into months, an
+entry could sit under a month whose date it did not display. It also removes a
+server/client split: each جردة's totals are derived on the server, which runs UTC,
+while the dates beside them are formatted in the browser.
+
+The domain answer settles it: this is a Jordanian organisation's book. A figure
+recorded on the 31st was recorded on the 31st, and it should say so to someone reading
+anywhere.
 
 ## Recording money
 
